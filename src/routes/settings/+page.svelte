@@ -399,7 +399,7 @@
         <label class="featrow">
           <input type="checkbox" checked={session.askAddType}
                  onchange={(e) => togglePref("search_ask_type", "askAddType", e.currentTarget.checked)} />
-          <span><b>Ask where to add</b> <span class="dim">· Search offers both sections, for titles TMDB filed under the wrong type</span></span>
+          <span><b>Ask where to add</b> <span class="dim">· adding from Search asks whether the title goes with shows or movies</span></span>
         </label>
         <label class="featrow">
           <input type="checkbox" checked={session.allFirst}

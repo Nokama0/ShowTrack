@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { confirm } from "@tauri-apps/plugin-dialog";
+  import { appConfirm } from "$lib/dialog.svelte";
   import { api, imgUrl } from "$lib/api";
   import { fmtRuntime, relDays } from "$lib/format";
   import type { EpisodeRow, ShowDetail } from "$lib/types";
@@ -140,10 +140,12 @@
 
   async function removeShow() {
     if (!detail) return;
-    const ok = await confirm(
-      `Remove ${detail.show.name} from your library? Its watch history goes with it.`,
-      { title: "ShowTrack", kind: "warning" },
-    );
+    const ok = await appConfirm({
+      title: "Remove show",
+      message: `Remove ${detail.show.name} from your library? Its watch history goes with it.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
     if (!ok) return;
     try {
       await api.showRemove(id);

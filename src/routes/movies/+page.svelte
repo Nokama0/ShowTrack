@@ -3,7 +3,7 @@
   import { goto } from "$app/navigation";
   import { fade, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { confirm } from "@tauri-apps/plugin-dialog";
+  import { appConfirm } from "$lib/dialog.svelte";
   import { api } from "$lib/api";
   import { session } from "$lib/session.svelte";
   import type { MovieRow } from "$lib/types";
@@ -138,15 +138,22 @@
   }
 
   async function resetRewatches(m: MovieRow) {
-    if (!(await confirm(`Reset the rewatch count for ${m.title}?`, { title: "ShowTrack" }))) return;
+    const ok = await appConfirm({
+      title: "Reset rewatches",
+      message: `Reset the rewatch count for ${m.title}?`,
+      confirmLabel: "Reset",
+    });
+    if (!ok) return;
     await setRewatches(m, 0);
   }
 
   async function removeMovie(m: MovieRow) {
-    const ok = await confirm(
-      `Remove ${m.title} from your library? Its watch history goes with it.`,
-      { title: "ShowTrack", kind: "warning" },
-    );
+    const ok = await appConfirm({
+      title: "Remove movie",
+      message: `Remove ${m.title} from your library? Its watch history goes with it.`,
+      confirmLabel: "Remove",
+      danger: true,
+    });
     if (!ok) return;
     try {
       await api.movieRemove(m.tmdbId);
