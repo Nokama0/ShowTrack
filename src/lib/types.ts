@@ -210,4 +210,5 @@ export interface UpdateInfo {
   notes: string;
   installerUrl: string | null;
   pageUrl: string;
+  kind: "setup" | "portable";
 }

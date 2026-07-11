@@ -60,7 +60,7 @@
     updInstalling = true;
     updMsg = "";
     try {
-      await api.updateInstall(upd.installerUrl); // downloads, launches the installer, exits
+      await api.updateInstall(upd.installerUrl); // downloads, hands over to the new version, exits
     } catch (e) {
       updMsg = String(e);
       updInstalling = false;
@@ -618,7 +618,7 @@
               {#if upd.notes}<p class="dim updnotes">{upd.notes}</p>{/if}
               {#if upd.installerUrl}
                 <button class="btn-gold" onclick={installUpdate} disabled={updInstalling}>
-                  {updInstalling ? "Downloading…" : "Install and restart"}
+                  {updInstalling ? "Downloading…" : upd.kind === "portable" ? "Update and restart" : "Install and restart"}
                 </button>
               {:else}
                 <p class="dim">Download it from {upd.pageUrl}</p>

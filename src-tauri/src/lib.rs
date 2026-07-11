@@ -59,6 +59,7 @@ pub fn run() {
             }
             #[cfg(not(target_os = "android"))]
             {
+                updater::cleanup_old_exe(); // leftover from a portable self-update
                 let state = app.state::<AppState>();
                 let (enabled, port, maximize) = {
                     let c = state.db.lock().unwrap();
