@@ -6,6 +6,7 @@
   import { session, type Features } from "$lib/session.svelte";
   import { isAndroid } from "$lib/platform";
   import { getVersion } from "@tauri-apps/api/app";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
   import type { CacheInfo, ImportProgress, ImportReport, RefreshSummary, SyncServerStatus, SyncStatus, UpdateInfo } from "$lib/types";
 
   let key = $state("");
@@ -198,6 +199,18 @@
     }
   }
 
+  let winTitle = $state("");
+
+  async function applyTitle() {
+    const t = winTitle.trim();
+    try {
+      await getCurrentWindow().setTitle(t || "ShowTrack");
+      await api.settingsSet("window_title", t);
+    } catch (e) {
+      session.banner = String(e);
+    }
+  }
+
   async function toggleStartMax(on: boolean) {
     startMax = on;
     try {
@@ -213,7 +226,10 @@
     api.cacheInfo().then((c) => (cache = c));
     if (!isAndroid) {
       api.syncServerStatus().then((s) => { sync = s; syncPort = s.port; });
-      api.settingsAll().then((s) => (startMax = s["start_maximized"] !== "0"));
+      api.settingsAll().then((s) => {
+        startMax = s["start_maximized"] !== "0";
+        winTitle = s["window_title"] ?? "";
+      });
     }
     if (isAndroid) {
       api.syncStatus().then((s) => {
@@ -449,6 +465,18 @@
               aria-label="UI scale"
             />
             <span class="zoomval">{zoomDraft}%</span>
+          </div>
+          <div class="row" style="align-items:center">
+            <span class="rowlabel">Window title</span>
+            <input
+              style="flex:1;max-width:320px"
+              placeholder="ShowTrack"
+              bind:value={winTitle}
+              onkeydown={(e) => e.key === "Enter" && applyTitle()}
+              aria-label="Window title"
+            />
+            <button class="btn-ghost" onclick={applyTitle}>Apply</button>
+            <span class="dim">leave empty for the default</span>
           </div>
           <label class="featrow">
             <input type="checkbox" checked={startMax} onchange={(e) => toggleStartMax(e.currentTarget.checked)} />
