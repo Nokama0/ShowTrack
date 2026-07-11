@@ -9,3 +9,7 @@ node_modules
 /src-tauri/gen/android/local.properties
 /src-tauri/gen/android/keystore.properties
 /src-tauri/gen/android/*.keystore
+
+# local working material, not for the public repo
+/design-previews/
+/docs/
