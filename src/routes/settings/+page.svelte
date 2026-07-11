@@ -5,7 +5,8 @@
   import { api } from "$lib/api";
   import { session, type Features } from "$lib/session.svelte";
   import { isAndroid } from "$lib/platform";
-  import type { CacheInfo, ImportProgress, ImportReport, RefreshSummary, SyncServerStatus, SyncStatus } from "$lib/types";
+  import { getVersion } from "@tauri-apps/api/app";
+  import type { CacheInfo, ImportProgress, ImportReport, RefreshSummary, SyncServerStatus, SyncStatus, UpdateInfo } from "$lib/types";
 
   let key = $state("");
   let keyStatus = $state("");
@@ -33,6 +34,47 @@
   let backupBusy = $state(false);
   let backupMsg = $state("");
   let startMax = $state(true);
+
+  let appVersion = $state("");
+  let upd = $state<UpdateInfo | null>(null);
+  let updMsg = $state("");
+  let updChecking = $state(false);
+  let updInstalling = $state(false);
+
+  async function checkUpdates() {
+    updChecking = true;
+    updMsg = "";
+    upd = null;
+    try {
+      upd = await api.updateCheck();
+      if (!upd) updMsg = "You are on the latest version.";
+    } catch (e) {
+      updMsg = String(e);
+    } finally {
+      updChecking = false;
+    }
+  }
+
+  async function installUpdate() {
+    if (!upd?.installerUrl) return;
+    updInstalling = true;
+    updMsg = "";
+    try {
+      await api.updateInstall(upd.installerUrl); // downloads, launches the installer, exits
+    } catch (e) {
+      updMsg = String(e);
+      updInstalling = false;
+    }
+  }
+
+  async function togglePref(key: string, field: "askAddType" | "allFirst", on: boolean) {
+    session[field] = on;
+    try {
+      await api.settingsSet(key, on ? "1" : "0");
+    } catch (e) {
+      session.banner = String(e);
+    }
+  }
 
   const featureDefs: { key: keyof Features; setting: string; label: string; hint: string }[] = [
     { key: "movies", setting: "feat_movies", label: "Movie tracking", hint: "the Movies page and movie results in Search" },
@@ -148,6 +190,7 @@
   }
 
   onMount(() => {
+    getVersion().then((v) => (appVersion = v)).catch(() => {});
     api.importLastReport().then((r) => (report = r));
     api.cacheInfo().then((c) => (cache = c));
     if (!isAndroid) {
@@ -352,6 +395,17 @@
             <span><b>{def.label}</b> <span class="dim">· {def.hint}</span></span>
           </label>
         {/each}
+        <div class="prefdiv"></div>
+        <label class="featrow">
+          <input type="checkbox" checked={session.askAddType}
+                 onchange={(e) => togglePref("search_ask_type", "askAddType", e.currentTarget.checked)} />
+          <span><b>Ask where to add</b> <span class="dim">· Search offers both sections, for titles TMDB filed under the wrong type</span></span>
+        </label>
+        <label class="featrow">
+          <input type="checkbox" checked={session.allFirst}
+                 onchange={(e) => togglePref("all_first", "allFirst", e.currentTarget.checked)} />
+          <span><b>All filters first</b> <span class="dim">· the All chip leads on Shows, Anime and Movies</span></span>
+        </label>
       </div>
     </section>
 
@@ -526,6 +580,29 @@
               : ""}
           </p>
         {/if}
+        {#if !isAndroid}
+          <div class="row" style="align-items:center">
+            <span class="rowlabel">Updates</span>
+            <button class="btn-ghost" onclick={checkUpdates} disabled={updChecking}>
+              {updChecking ? "Checking…" : "Check for updates"}
+            </button>
+            {#if appVersion}<span class="dim">version {appVersion}</span>{/if}
+          </div>
+          {#if updMsg}<p class="dim">{updMsg}</p>{/if}
+          {#if upd}
+            <div class="updcard">
+              <b>Version {upd.version} is available.</b>
+              {#if upd.notes}<p class="dim updnotes">{upd.notes}</p>{/if}
+              {#if upd.installerUrl}
+                <button class="btn-gold" onclick={installUpdate} disabled={updInstalling}>
+                  {updInstalling ? "Downloading…" : "Install and restart"}
+                </button>
+              {:else}
+                <p class="dim">Download it from {upd.pageUrl}</p>
+              {/if}
+            </div>
+          {/if}
+        {/if}
         {#if cache}
           <p class="dim cacheline">Image cache · {cache.path} · {mb(cache.bytes)} MB</p>
         {/if}
@@ -597,6 +674,13 @@
   }
   .zslider:focus { box-shadow: none; border: none; }
   .featrow { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 2px 0; }
+  .prefdiv { border-top: 1px solid var(--line); margin: 8px 0 6px; }
+  .updcard {
+    border: 1px solid rgba(255, 207, 110, 0.4); border-radius: var(--r-md);
+    padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;
+    align-items: flex-start; animation: rise 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+  .updnotes { white-space: pre-line; margin: 0; font-size: 12.5px; }
   .featrow input { flex-shrink: 0; }
   .bar.big { height: 8px; border-radius: 4px; }
   .bar.big i { transition: width 0.2s; }

@@ -82,12 +82,15 @@
   const readyCount = $derived(readyPool.filter((c) => c.ready!.kind !== "start").length);
   const startCount = $derived(readyPool.filter((c) => c.ready!.kind === "start").length);
 
-  const chips = [
+  const baseChips = [
     ["watching", "Watching"],
     ["plan_to_watch", "Plan to watch"],
     ["stopped", "Stopped"],
     ["all", "All shows"],
   ] as const;
+  const chips = $derived(
+    session.allFirst ? [baseChips[3], baseChips[0], baseChips[1], baseChips[2]] : [...baseChips],
+  );
 
   async function markSeason(card: BingeCard) {
     const season = card.ready?.seasonNumber;

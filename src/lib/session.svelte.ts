@@ -15,6 +15,8 @@ export const session = $state({
   banner: "" as string,
   refreshTick: 0,
   zoom: 100,
+  askAddType: false,
+  allFirst: false,
   features: {
     movies: true,
     animePage: true,
@@ -31,6 +33,8 @@ export async function loadSession() {
     session.hasKey = !!s["tmdb_key"];
     const z = parseInt(s["ui_zoom"] ?? "100", 10);
     session.zoom = Number.isFinite(z) ? Math.min(150, Math.max(80, z)) : 100;
+    session.askAddType = s["search_ask_type"] === "1";
+    session.allFirst = s["all_first"] === "1";
     const on = (key: string) => s[key] !== "0"; // everything defaults to on
     session.features = {
       movies: on("feat_movies"),

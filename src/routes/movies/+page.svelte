@@ -3,6 +3,7 @@
   import { goto } from "$app/navigation";
   import { fade, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
+  import { confirm } from "@tauri-apps/plugin-dialog";
   import { api } from "$lib/api";
   import { session } from "$lib/session.svelte";
   import type { MovieRow } from "$lib/types";
@@ -57,7 +58,15 @@
   let movies = $state<MovieRow[]>([]);
   let loaded = $state(false);
   let loadError = $state("");
-  let tab = $state<"watched" | "watchlist">("watched");
+  let tab = $state<"watched" | "watchlist" | "all">("watched");
+  const tabDefs = [
+    ["watched", "Watched"],
+    ["watchlist", "Watchlist"],
+    ["all", "All movies"],
+  ] as const;
+  const tabs = $derived(
+    session.allFirst ? [tabDefs[2], tabDefs[0], tabDefs[1]] : [...tabDefs],
+  );
   let sort = $state<"watchedAt" | "title" | "year">("watchedAt");
   let query = $state("");
   let selected = $state<MovieRow | null>(null);
@@ -75,7 +84,9 @@
 
   const visible = $derived.by(() => {
     const q = query.trim().toLowerCase();
-    const list = movies.filter((m) => m.myState === tab && (q === "" || m.title.toLowerCase().includes(q)));
+    const list = movies.filter(
+      (m) => (tab === "all" || m.myState === tab) && (q === "" || m.title.toLowerCase().includes(q)),
+    );
     const cmp: Record<string, (a: MovieRow, b: MovieRow) => number> = {
       watchedAt: (a, b) => (b.watchedAt ?? "").localeCompare(a.watchedAt ?? ""),
       title: (a, b) => a.title.localeCompare(b.title),
@@ -118,8 +129,32 @@
     await api.movieSetState(m.tmdbId, myState);
   }
 
-  async function rewatch(m: MovieRow) {
-    replace({ ...m, rewatchCount: await api.movieRewatch(m.tmdbId) });
+  async function setRewatches(m: MovieRow, count: number) {
+    try {
+      replace({ ...m, rewatchCount: await api.movieSetRewatch(m.tmdbId, count) });
+    } catch (e) {
+      session.banner = String(e);
+    }
+  }
+
+  async function resetRewatches(m: MovieRow) {
+    if (!(await confirm(`Reset the rewatch count for ${m.title}?`, { title: "ShowTrack" }))) return;
+    await setRewatches(m, 0);
+  }
+
+  async function removeMovie(m: MovieRow) {
+    const ok = await confirm(
+      `Remove ${m.title} from your library? Its watch history goes with it.`,
+      { title: "ShowTrack", kind: "warning" },
+    );
+    if (!ok) return;
+    try {
+      await api.movieRemove(m.tmdbId);
+      movies = movies.filter((x) => x.tmdbId !== m.tmdbId);
+      selected = null;
+    } catch (e) {
+      session.banner = String(e);
+    }
   }
 
   async function toggleFav(m: MovieRow) {
@@ -137,8 +172,9 @@
 
 <div class="toolbar">
   <div class="chips">
-    <button class="chip" class:on={tab === "watched"} onclick={() => (tab = "watched")}>Watched</button>
-    <button class="chip" class:on={tab === "watchlist"} onclick={() => (tab = "watchlist")}>Watchlist</button>
+    {#each tabs as [value, label] (value)}
+      <button class="chip" class:on={tab === value} onclick={() => (tab = value)}>{label}</button>
+    {/each}
   </div>
   <Select
     value={sort}
@@ -196,12 +232,20 @@
         {#if selected.runtime}<p class="dim">{selected.runtime} min</p>{/if}
         {#if selected.overview}<p class="dim ov">{selected.overview}</p>{/if}
         {#if selected.myState === "watched"}
-          <p>
-            Watched {selected.watchedAt ? selected.watchedAt.slice(0, 10) : ""}
-            {#if selected.rewatchCount > 0}· {selected.rewatchCount} rewatch{selected.rewatchCount > 1 ? "es" : ""}{/if}
-          </p>
+          <p>Watched {selected.watchedAt ? selected.watchedAt.slice(0, 10) : ""}</p>
+          <div class="mactions rewatches">
+            <span class="dim">Rewatches</span>
+            <button class="rwbtn" aria-label="One rewatch fewer"
+                    onclick={() => setRewatches(selected!, selected!.rewatchCount - 1)}
+                    disabled={selected.rewatchCount <= 0}>−</button>
+            <b class="rwcount">{selected.rewatchCount}</b>
+            <button class="rwbtn" aria-label="One more rewatch"
+                    onclick={() => setRewatches(selected!, selected!.rewatchCount + 1)}>+</button>
+            {#if selected.rewatchCount > 0}
+              <button class="btn-ghost rwreset" onclick={() => resetRewatches(selected!)}>Reset</button>
+            {/if}
+          </div>
           <div class="mactions">
-            <button class="btn-ghost" onclick={() => rewatch(selected!)}>+ Rewatch</button>
             <button class="btn-ghost" onclick={() => setState(selected!, "watchlist")}>Move to watchlist</button>
           </div>
         {:else}
@@ -213,6 +257,7 @@
           <button class="btn-ghost" class:favon={selected.isFavorite} onclick={() => toggleFav(selected!)}>
             {selected.isFavorite ? "★ Favorite" : "☆ Favorite"}
           </button>
+          <button class="btn-ghost removebtn" onclick={() => removeMovie(selected!)}>Remove</button>
           <button class="btn-ghost" onclick={() => (selected = null)}>Close</button>
         </div>
       </div>
@@ -248,6 +293,12 @@
   .ov { font-size: 13px; }
   .mactions { display: flex; gap: 8px; flex-wrap: wrap; }
   .favon { color: var(--gold); border-color: var(--gold); }
+  .rewatches { align-items: center; }
+  .rwbtn { padding: 4px 13px; font-size: 15px; border-radius: 999px; }
+  .rwcount { min-width: 22px; text-align: center; }
+  .rwreset { padding: 6px 14px; font-size: 12.5px; }
+  .removebtn { color: var(--red); border-color: rgba(255, 84, 112, 0.35); }
+  .removebtn:hover { border-color: var(--red); color: var(--red); }
   @media (max-width: 760px) {
     .toolbar input { margin-left: 0; flex: 1; }
     .overlay { align-items: flex-end; }

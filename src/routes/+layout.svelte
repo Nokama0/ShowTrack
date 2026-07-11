@@ -68,6 +68,12 @@
     }
     // after the refresh so the two never fight over the busy flag
     autoSync();
+    if (!isAndroid) {
+      // quiet launch check; no releases yet or offline is not worth a banner
+      api.updateCheck().then((u) => {
+        if (u) session.banner = `ShowTrack ${u.version} is available. Install it from Settings.`;
+      }).catch(() => {});
+    }
   });
 
   onMount(() => {

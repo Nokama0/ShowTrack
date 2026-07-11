@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AiringRow, BingeCard, CacheInfo, ImportReport, MovieRow, PairSummary, RefreshSummary,
-  SearchItem, ShowCard, ShowDetail, SyncServerStatus, SyncStatus, SyncSummary, UpcomingItem,
+  SearchItem, ShowCard, ShowDetail, SyncServerStatus, SyncStatus, SyncSummary, UpcomingItem, UpdateInfo,
 } from "./types";
 import { isAndroid } from "./platform";
 
@@ -30,6 +30,13 @@ export const api = {
   moviesList: () => invoke<MovieRow[]>("movies_list"),
   movieSetState: (id: number, myState: string) => invoke<void>("movie_set_state", { id, myState }),
   movieRewatch: (id: number) => invoke<number>("movie_rewatch", { id }),
+  movieSetRewatch: (id: number, count: number) => invoke<number>("movie_set_rewatch", { id, count }),
+  showRemove: (id: number) => invoke<void>("show_remove", { id }),
+  movieRemove: (id: number) => invoke<void>("movie_remove", { id }),
+  titleAdd: (tmdbId: number, src: string, target: string, myState: string) =>
+    invoke<void>("title_add", { tmdbId, src, target, myState }),
+  updateCheck: () => invoke<UpdateInfo | null>("update_check"),
+  updateInstall: (url: string) => invoke<void>("update_install", { url }),
   movieToggleFavorite: (id: number) => invoke<boolean>("movie_toggle_favorite", { id }),
   searchTmdb: (query: string) => invoke<SearchItem[]>("search_tmdb", { query }),
   showAdd: (tmdbId: number, myState: string) => invoke<void>("show_add", { tmdbId, myState }),
