@@ -112,9 +112,17 @@
     ],
   );
 
+  let pressed = $state("");
+  let pressTimer: ReturnType<typeof setTimeout> | undefined;
+
   function goTo(e: MouseEvent, id: string) {
     e.preventDefault();
     active = id; // instant feedback; the spy reconciles once scrolling settles
+    // drop and re-add the pulse class through a frame so repeat clicks restart it
+    pressed = "";
+    clearTimeout(pressTimer);
+    requestAnimationFrame(() => (pressed = id));
+    pressTimer = setTimeout(() => (pressed = ""), 600);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -361,6 +369,7 @@
       <a
         href={`#${s.id}`}
         class:on={active === s.id}
+        class:pulse={pressed === s.id}
         style={`animation-delay:${80 + i * 55}ms`}
         onclick={(e) => goTo(e, s.id)}
       >
@@ -624,23 +633,48 @@
     display: flex; flex-direction: column; gap: 4px;
   }
   .sindex a {
+    position: relative;
     display: block; padding: 10px 14px; border-radius: 12px;
-    transition: background-color 0.18s ease, box-shadow 0.25s ease, transform 0.15s ease;
+    transition: background-color 0.18s ease, transform 0.18s cubic-bezier(0.2, 0.7, 0.3, 1);
     animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both;
   }
-  .sindex a:hover { transform: translateX(3px); }
-  .sindex a:active { transform: translateX(3px) scale(0.97); }
+  /* gold marker: grows in on hover, full height on the active entry */
+  .sindex a::before {
+    content: ""; position: absolute; left: 0; top: 50%; translate: 0 -50%;
+    width: 2px; border-radius: 2px; background: var(--gold);
+    height: 0; opacity: 0;
+    transition: height 0.24s cubic-bezier(0.2, 0.7, 0.3, 1), opacity 0.18s ease;
+  }
+  .sindex a:hover { background: var(--raise); transform: translateX(4px); }
+  .sindex a:hover::before { height: 38%; opacity: 0.55; }
+  .sindex a:active { transform: translateX(4px) scale(0.96); }
   .sindex a b {
     display: block; font-family: "Anton", sans-serif; font-weight: 400;
     font-size: 14px; letter-spacing: 0.07em; text-transform: uppercase;
     color: var(--dim); transition: color 0.18s ease;
   }
-  .sindex a .sstat { display: block; font-size: 11.5px; color: var(--faint); margin-top: 2px; }
-  .sindex a:hover { background: var(--raise); }
+  .sindex a .sstat {
+    display: block; font-size: 11.5px; color: var(--faint); margin-top: 2px;
+    transition: color 0.18s ease;
+  }
   .sindex a:hover b { color: var(--text); }
-  .sindex a.on { background: var(--raise); box-shadow: inset 2px 0 0 var(--gold); }
+  .sindex a:hover .sstat { color: var(--dim); }
+  .sindex a.on { background: var(--raise); }
+  .sindex a.on::before { height: 68%; opacity: 1; }
   .sindex a.on b { color: var(--gold); }
   .sindex a.on .sstat { color: var(--dim); }
+  /* click ripple lives on ::after so it never disturbs the entrance animation */
+  .sindex a::after {
+    content: ""; position: absolute; inset: 0; border-radius: 12px; pointer-events: none;
+  }
+  .sindex a.pulse::after { animation: navpulse 0.55s cubic-bezier(0.2, 0.7, 0.3, 1); }
+  @keyframes navpulse {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 50%, transparent);
+      background: color-mix(in srgb, var(--gold) 16%, transparent);
+    }
+    100% { box-shadow: 0 0 0 18px transparent; background: transparent; }
+  }
 
   .sbody { min-width: 0; }
   .sblock { scroll-margin-top: 24px; animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
