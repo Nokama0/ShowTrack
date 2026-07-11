@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShowTrack — Mockup D · Marquee skin, Signal layout, season-first</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wdth,wght@75..125,300..800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #07090f;
+    --raise: #0d1119;
+    --raise-hi: #131927;
+    --line: #1a2130;
+    --text: #e9edf4;
+    --dim: #8b94a7;
+    --faint: #525b6e;
+    --gold: #ffcf6e;
+    --gold-dim: rgba(255,207,110,.14);
+    --r-lg: 18px;
+    --r-md: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Archivo", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.5;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+  .anton { font-family: "Anton", sans-serif; font-weight: 400; }
+
+  .shell { display: flex; min-height: 100vh; }
+
+  /* ── Icon dock (C's nav, A's clothes) ──── */
+  .dock {
+    width: 88px; flex-shrink: 0; padding: 22px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    border-right: 1px solid var(--line); position: sticky; top: 0; height: 100vh;
+  }
+  .dock .mark {
+    width: 44px; height: 44px; border-radius: 13px; margin-bottom: 18px;
+    background: linear-gradient(140deg, #2a3550, #101623);
+    border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Anton", sans-serif; font-size: 19px; color: var(--gold);
+  }
+  .dock a {
+    width: 60px; padding: 9px 0 7px; border-radius: 12px; text-align: center;
+    color: var(--dim); font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
+  }
+  .dock a .ico { display: block; font-size: 17px; margin-bottom: 3px; opacity: .9; }
+  .dock a:hover { background: var(--raise); color: var(--text); }
+  .dock a.on { background: var(--raise-hi); color: var(--text); box-shadow: inset 0 0 0 1px var(--gold); }
+  .dock .foot { margin-top: auto; color: var(--faint); font-size: 9.5px; text-align: center; line-height: 1.4; }
+
+  main { flex: 1; min-width: 0; padding: 30px 48px 64px; }
+
+  /* ── Ultrawide: center + sticky right rail ── */
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 44px; align-items: start; }
+  .rail { position: sticky; top: 28px; min-width: 0; }
+  .rail h2:first-child { margin-top: 6px; }
+  @media (max-width: 1719px) {
+    .cols { grid-template-columns: 1fr; }
+    .rail { position: static; }
+  }
+
+  /* ── Header + stats (C's structure) ────── */
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 24px; }
+  h1 { font-family: "Anton", sans-serif; font-weight: 400; font-size: 30px; letter-spacing: .03em; text-transform: uppercase; }
+  h1 span { color: var(--gold); }
+  .stats { display: flex; gap: 10px; }
+  .stat {
+    background: var(--raise); border: 1px solid var(--line); border-radius: var(--r-md);
+    padding: 9px 16px; text-align: center;
+  }
+  .stat b { display: block; font-family: "Anton", sans-serif; font-weight: 400; font-size: 18px; letter-spacing: .03em; }
+  .stat span { font-size: 10px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+  .stat.g b { color: var(--gold); }
+
+  .chips { display: flex; gap: 8px; margin-bottom: 30px; flex-wrap: wrap; }
+  .chip {
+    padding: 7px 15px; border-radius: 999px; font-weight: 600; font-size: 13px;
+    background: var(--raise); border: 1px solid var(--line); color: var(--dim);
+  }
+  .chip.on { background: var(--gold); border-color: var(--gold); color: #14100a; }
+  .chip:hover:not(.on) { color: var(--text); border-color: var(--faint); }
+
+  h2 {
+    font-family: "Anton", sans-serif; font-weight: 400; font-size: 13px;
+    letter-spacing: .2em; text-transform: uppercase; color: var(--dim);
+    margin: 34px 0 16px;
+  }
+  h2 b { color: var(--gold); font-weight: 400; }
+  h2 small { font-family: "Archivo", sans-serif; letter-spacing: 0; text-transform: none; color: var(--faint); font-size: 12px; margin-left: 10px; }
+
+  /* ── Tonight hero: the featured binge ──── */
+  .hero {
+    position: relative; border-radius: 22px; overflow: hidden;
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(120% 180% at 88% 0%, rgba(148,163,184,.14), transparent 55%),
+      radial-gradient(110% 160% at 8% 110%, rgba(255,207,110,.10), transparent 50%),
+      linear-gradient(105deg, #0c1018 45%, #101623);
+    padding: 34px 38px 30px; margin-bottom: 8px;
+  }
+  .hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.014) 0 1px, transparent 1px 3px);
+  }
+  .hero .eyebrow { font-family: "Anton", sans-serif; font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: var(--dim); margin-bottom: 12px; }
+  .hero .eyebrow b { color: var(--gold); font-weight: 400; }
+  .hero .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; flex-wrap: wrap; }
+  .hero .show { font-size: 16px; font-weight: 600; color: var(--dim); }
+  .hero .season { font-family: "Anton", sans-serif; font-size: clamp(52px, 6vw, 78px); line-height: 1; color: var(--text); }
+  .hero .season span { color: var(--gold); }
+  .hero .meta { color: var(--dim); font-size: 13.5px; margin-top: 8px; }
+  .hero .meta b { color: var(--text); }
+  .hero .actions { display: flex; gap: 12px; align-items: center; }
+  .btn-gold {
+    display: inline-flex; align-items: center; gap: 9px;
+    background: var(--gold); color: #14100a; font-weight: 700; font-size: 14.5px;
+    padding: 12px 22px; border-radius: 999px;
+    box-shadow: 0 0 32px rgba(255,207,110,.28);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn-gold:hover { transform: translateY(-1px); box-shadow: 0 0 44px rgba(255,207,110,.42); }
+  .btn-ghost {
+    padding: 12px 20px; border-radius: 999px; border: 1px solid var(--line);
+    color: var(--dim); font-weight: 600; font-size: 13.5px;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--faint); }
+
+  /* ── Card grid (C's grid, A's posters) ─── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 218px)); gap: 24px; }
+  .card { position: relative; }
+  .poster {
+    position: relative; aspect-ratio: 2/3; border-radius: var(--r-lg); overflow: hidden;
+    display: flex; align-items: flex-end; padding: 13px;
+    font-family: "Anton", sans-serif; font-size: 19px; line-height: 1.05;
+    letter-spacing: .02em; text-transform: uppercase; color: rgba(255,255,255,.92);
+    transition: transform .16s ease;
+  }
+  .card:hover .poster { transform: translateY(-3px); }
+  .poster::before { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(115deg, rgba(255,255,255,.03) 0 1px, transparent 1px 4px); }
+  .poster::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,.55)); }
+  .poster b { position: relative; z-index: 1; font-weight: 400; }
+  .glow-void   { background: linear-gradient(155deg,#1c2027,#08090c 65%); box-shadow: 0 16px 44px -12px rgba(148,163,184,.30); }
+  .glow-crimson{ background: linear-gradient(165deg,#4c1220,#180507 70%); box-shadow: 0 16px 44px -12px rgba(244,63,94,.34); }
+  .glow-frost  { background: linear-gradient(165deg,#1e3a5f,#0a1220 70%); box-shadow: 0 16px 44px -12px rgba(125,211,252,.32); }
+  .glow-sage   { background: linear-gradient(165deg,#2c4030,#0d150e 70%); box-shadow: 0 16px 44px -12px rgba(134,239,172,.28); }
+  .glow-dusk   { background: linear-gradient(165deg,#3b2a5e,#120a20 70%); box-shadow: 0 16px 44px -12px rgba(196,181,253,.32); }
+  .glow-ember  { background: linear-gradient(165deg,#4a1d10,#1d0b06 70%); box-shadow: 0 16px 44px -12px rgba(251,146,60,.34); }
+
+  /* ring = series progress; tap = mark the ready season */
+  .ring {
+    --p: 81;
+    position: absolute; top: -9px; right: -7px; z-index: 2;
+    width: 54px; height: 54px; border-radius: 50%;
+    background:
+      radial-gradient(closest-side, var(--raise-hi) 78%, transparent 79% 100%),
+      conic-gradient(var(--gold) calc(var(--p) * 1%), var(--line) 0);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,.5);
+    transition: transform .15s ease;
+  }
+  .ring b { font-size: 18px; color: var(--gold); font-weight: 700; transform: translateY(-1px); }
+  .ring:hover { transform: scale(1.08); }
+  .card .under { padding: 11px 3px 0; }
+  .card .title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .season-line { color: var(--dim); font-size: 12.5px; margin-top: 2px; }
+  .card .season-line b { color: var(--gold); font-weight: 700; }
+  .badge {
+    display: inline-block; margin-top: 8px; font-size: 10.5px; font-weight: 700; letter-spacing: .05em;
+    background: var(--gold-dim); color: var(--gold); border-radius: 999px; padding: 3px 10px;
+  }
+  .badge.dim { background: rgba(139,148,167,.12); color: var(--dim); }
+
+  /* ── Airing now: finale countdown rows ─── */
+  .airing { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .air {
+    border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--raise);
+    padding: 16px 18px;
+  }
+  .air .top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .air .top b { font-weight: 600; font-size: 15px; }
+  .air .when { font-family: "Anton", sans-serif; font-size: 13px; letter-spacing: .08em; color: var(--gold); white-space: nowrap; }
+  .air .sub { color: var(--dim); font-size: 12.5px; margin: 3px 0 12px; }
+  .air .bar { height: 4px; background: #232b3d; border-radius: 2px; overflow: hidden; }
+  .air .bar i { display: block; height: 100%; background: var(--dim); border-radius: 2px; }
+  .air.done .bar i { background: var(--gold); }
+  .air .cap { font-size: 11px; color: var(--faint); margin-top: 7px; }
+
+  /* ── Caught up ─────────────────────────── */
+  .caught { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tag {
+    display: flex; align-items: center; gap: 9px;
+    background: var(--raise); border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 15px; font-size: 13px; color: var(--dim);
+  }
+  .tag b { color: var(--text); font-weight: 600; }
+  .tag i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+
+  @media (max-width: 760px) {
+    .dock { display: none; }
+    main { padding: 20px 16px 48px; }
+    .hero { padding: 24px 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="dock" aria-label="Sections">
+    <div class="mark">S</div>
+    <a class="on" href="#"><span class="ico">▶</span>Shows</a>
+    <a href="#"><span class="ico">◷</span>Airing</a>
+    <a href="#"><span class="ico">▤</span>Movies</a>
+    <a href="#"><span class="ico">⌕</span>Search</a>
+    <a href="#"><span class="ico">✦</span>Settings</a>
+    <div class="foot">10,883<br/>episodes</div>
+  </nav>
+
+  <main>
+    <div class="head">
+      <h1>Ready to <span>binge</span></h1>
+      <div class="stats">
+        <div class="stat g"><b>3</b><span>seasons ready</span></div>
+        <div class="stat"><b>5</b><span>ready to start</span></div>
+        <div class="stat"><b>143</b><span>caught up</span></div>
+      </div>
+    </div>
+
+    <div class="chips">
+      <button class="chip on">Watching</button>
+      <button class="chip">Plan to watch</button>
+      <button class="chip">Stopped</button>
+      <button class="chip">All shows</button>
+    </div>
+
+    <div class="cols">
+    <div class="center">
+    <section class="hero" aria-label="Tonight's binge">
+      <div class="eyebrow">Tonight's <b>binge</b></div>
+      <div class="row">
+        <div>
+          <div class="show">Black Mirror</div>
+          <div class="season">Season <span>7</span></div>
+          <div class="meta"><b>6 episodes</b> · ~5 h 40 m · finale aired Apr 10 — the whole season is waiting</div>
+        </div>
+        <div class="actions">
+          <button class="btn-ghost">Episode list</button>
+          <button class="btn-gold">✓&nbsp; Season watched</button>
+        </div>
+      </div>
+    </section>
+
+    <h2>Complete seasons <b>ready</b><small>every episode has aired — tap the ring after your binge</small></h2>
+    <div class="grid">
+      <div class="card">
+        <button class="ring" style="--p:81" aria-label="Mark Black Mirror season 7 watched"><b>✓</b></button>
+        <div class="poster glow-void"><b>Black<br/>Mirror</b></div>
+        <div class="under">
+          <div class="title">Black Mirror</div>
+          <div class="season-line"><b>S7</b> · 6 eps · 5 h 40 m</div>
+          <span class="badge">ready to binge</span>
+        </div>
+      </div>
+      <div class="card">
+        <button class="ring" style="--p:0" aria-label="Mark Re:ZERO season 1 watched"><b>✓</b></button>
+        <div class="poster glow-dusk"><b>Re:<br/>ZERO</b></div>
+        <div class="under">
+          <div class="title">Re:ZERO</div>
+          <div class="season-line"><b>S1</b> · 25 eps · 10 h</div>
+          <span class="badge">ready to start</span>
+        </div>
+      </div>
+      <div class="card">
+        <button class="ring" style="--p:0" aria-label="Mark Justified season 1 watched"><b>✓</b></button>
+        <div class="poster glow-crimson"><b>Justi-<br/>fied</b></div>
+        <div class="under">
+          <div class="title">Justified</div>
+          <div class="season-line"><b>S1</b> · 13 eps · 9 h 20 m</div>
+          <span class="badge">ready to start</span>
+        </div>
+      </div>
+      <div class="card">
+        <button class="ring" style="--p:0" aria-label="Mark Modern Family season 1 watched"><b>✓</b></button>
+        <div class="poster glow-sage"><b>Modern<br/>Family</b></div>
+        <div class="under">
+          <div class="title">Modern Family</div>
+          <div class="season-line"><b>S1</b> · 24 eps · 8 h 50 m</div>
+          <span class="badge">ready to start</span>
+        </div>
+      </div>
+      <div class="card">
+        <button class="ring" style="--p:0" aria-label="Mark Strike Back season 1 watched"><b>✓</b></button>
+        <div class="poster glow-ember"><b>Strike<br/>Back</b></div>
+        <div class="under">
+          <div class="title">Strike Back</div>
+          <div class="season-line"><b>S1</b> · 10 eps · 7 h 30 m</div>
+          <span class="badge">ready to start</span>
+        </div>
+      </div>
+      <div class="card">
+        <button class="ring" style="--p:0" aria-label="Mark Shadowhunters season 1 watched"><b>✓</b></button>
+        <div class="poster glow-frost"><b>Shadow<br/>hunters</b></div>
+        <div class="under">
+          <div class="title">Shadowhunters</div>
+          <div class="season-line"><b>S1</b> · 13 eps · 9 h</div>
+          <span class="badge">ready to start</span>
+        </div>
+      </div>
+    </div>
+    </div><!-- /center -->
+
+    <aside class="rail">
+    <h2>Airing <b>now</b><small>they move left when the finale lands</small></h2>
+    <div class="airing">
+      <div class="air">
+        <div class="top"><b>Euphoria</b><span class="when">BINGEABLE AUG 24</span></div>
+        <div class="sub">Season 3 · 5 of 8 episodes aired</div>
+        <div class="bar"><i style="width:62%"></i></div>
+        <div class="cap">next episode Jul 6 · finale Aug 24</div>
+      </div>
+      <div class="air">
+        <div class="top"><b>South Park</b><span class="when">BINGEABLE SEP 10</span></div>
+        <div class="sub">Season 27 · 5 of 10 episodes aired</div>
+        <div class="bar"><i style="width:50%"></i></div>
+        <div class="cap">next episode Jul 9 · finale Sep 10</div>
+      </div>
+      <div class="air">
+        <div class="top"><b>Ahsoka</b><span class="when">BINGEABLE SEP 2</span></div>
+        <div class="sub">Season 2 · starts Jul 15 · 8 episodes</div>
+        <div class="bar"><i style="width:0%"></i></div>
+        <div class="cap">premiere Jul 15 · finale Sep 2</div>
+      </div>
+    </div>
+
+    <h2>Caught <b>up</b><small>143 shows — nothing new to watch yet</small></h2>
+    <div class="caught">
+      <div class="tag"><i></i><span><b>Andor</b> · 24/24</span></div>
+      <div class="tag"><i></i><span><b>Arcane</b> · 18/18</span></div>
+      <div class="tag"><i></i><span><b>Breaking Bad</b> · 62/62</span></div>
+      <div class="tag"><i></i><span><b>Better Call Saul</b> · 63/63</span></div>
+      <div class="tag"><i></i><span><b>Band of Brothers</b> · 10/10</span></div>
+      <div class="tag"><i></i><span><b>Battlestar Galactica</b> · 73/73</span></div>
+      <div class="tag"><i></i><span><b>Boardwalk Empire</b> · 56/56</span></div>
+      <div class="tag"><i></i><span><b>The West Wing</b> · 154/154</span></div>
+      <div class="tag" style="border-style:dashed"><span>+ 135 more</span></div>
+    </div>
+    </aside><!-- /rail -->
+    </div><!-- /cols -->
+  </main>
+</div>
+</body>
+</html>

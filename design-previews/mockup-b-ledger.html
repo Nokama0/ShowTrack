@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShowTrack — Mockup B · Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #171310;
+    --panel: #1e1915;
+    --line: #322a23;
+    --paper: #ede4d4;
+    --dim: #a4967f;
+    --faint: #6b5f4e;
+    --wax: #c9502f;      /* sealing-wax red: actions */
+    --amber: #d9a33c;    /* progress, highlights */
+    --moss: #7ba05b;     /* completed */
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--paper);
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.55;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .mono { font-family: "IBM Plex Mono", monospace; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px 80px; }
+
+  /* ── Masthead ─────────────────────────── */
+  header { padding: 34px 0 0; }
+  .masthead { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .wordmark {
+    font-family: "Fraunces", serif; font-weight: 600; font-size: 30px;
+    font-variation-settings: "opsz" 60; letter-spacing: -0.01em;
+  }
+  .wordmark i { font-style: italic; color: var(--amber); font-weight: 400; }
+  .tally { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--dim); text-align: right; }
+  .tally b { color: var(--paper); font-weight: 500; }
+  .tabs {
+    display: flex; gap: 28px; margin-top: 26px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tabs a {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--dim); padding: 10px 2px 12px;
+  }
+  .tabs a.active { color: var(--paper); box-shadow: inset 0 -2px 0 var(--wax); }
+  .tabs a:hover { color: var(--paper); }
+  .tabs .right { margin-left: auto; display: flex; gap: 28px; }
+
+  /* ── Section titles ───────────────────── */
+  h2 {
+    font-family: "Fraunces", serif; font-weight: 400; font-style: italic;
+    font-size: 22px; color: var(--paper); margin: 44px 0 4px;
+  }
+  .sub { color: var(--faint); font-size: 12.5px; margin-bottom: 18px; }
+
+  /* ── Ledger rows ──────────────────────── */
+  .ledger { border-top: 1px solid var(--line); }
+  .row {
+    display: grid;
+    grid-template-columns: 44px minmax(210px, 1.1fr) minmax(230px, 1fr) minmax(180px, 1.2fr) auto;
+    gap: 22px; align-items: center;
+    padding: 16px 4px; border-bottom: 1px solid var(--line);
+  }
+  .row:hover { background: rgba(237,228,212,.025); }
+  .chip {
+    width: 44px; height: 62px; border-radius: 4px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Fraunces", serif; font-size: 17px; color: rgba(255,255,255,.85);
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .name { min-width: 0; }
+  .name b {
+    font-family: "Fraunces", serif; font-weight: 500; font-size: 17.5px; display: block;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .name span { font-size: 12px; color: var(--faint); }
+  .next { min-width: 0; }
+  .next .code { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--amber); }
+  .next .t { display: block; font-size: 13px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* signature: the season punch-grid */
+  .punch { display: flex; flex-wrap: wrap; gap: 3px; max-width: 260px; }
+  .punch i {
+    width: 9px; height: 9px; border-radius: 2px;
+    background: transparent; border: 1px solid var(--faint);
+  }
+  .punch i.w { background: var(--amber); border-color: var(--amber); }
+  .punch i.next { border-color: var(--wax); box-shadow: 0 0 0 1px var(--wax); }
+  .punch-cap { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--faint); margin-top: 6px; display: block; }
+
+  .stamp {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--wax);
+    border: 1.5px solid var(--wax); border-radius: 3px; padding: 8px 14px;
+    transform: rotate(-1.5deg); transition: all .12s ease; white-space: nowrap;
+  }
+  .stamp:hover { background: var(--wax); color: #1c0f09; transform: rotate(-1.5deg) scale(1.04); }
+
+  /* ── Closed volumes (up to date) ──────── */
+  .volumes { display: flex; flex-wrap: wrap; gap: 10px 26px; }
+  .vol { display: flex; align-items: baseline; gap: 10px; font-size: 13.5px; padding: 4px 0; }
+  .vol b { font-family: "Fraunces", serif; font-weight: 500; font-size: 15px; }
+  .vol .mono { font-size: 11px; color: var(--moss); }
+  .vol::before { content: "✓"; color: var(--moss); font-size: 12px; }
+
+  /* ── Almanac (upcoming) ───────────────── */
+  .almanac { border-top: 1px solid var(--line); }
+  .alm {
+    display: grid; grid-template-columns: 130px 1fr auto; gap: 22px;
+    padding: 13px 4px; border-bottom: 1px solid var(--line); align-items: baseline;
+  }
+  .alm .date { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--amber); }
+  .alm .what b { font-family: "Fraunces", serif; font-weight: 500; font-size: 16px; }
+  .alm .what span { color: var(--dim); font-size: 13px; margin-left: 10px; }
+  .alm .in { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--faint); }
+
+  @media (max-width: 900px) {
+    .row { grid-template-columns: 44px 1fr auto; }
+    .next, .punchcell { display: none; }
+    .wrap { padding: 0 18px 60px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="masthead">
+      <div class="wordmark">Show<i>Track</i></div>
+      <div class="tally">
+        vol. I · est. 2026 —— <b>171</b> shows · <b>594</b> films · <b>10,883</b> episodes recorded
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Sections">
+      <a class="active" href="#">Index</a>
+      <a href="#">Almanac</a>
+      <a href="#">Films</a>
+      <div class="right">
+        <a href="#">Search</a>
+        <a href="#">Settings</a>
+      </div>
+    </nav>
+  </header>
+
+  <h2>Open entries</h2>
+  <div class="sub">Six shows in progress — next episode ready to be struck off.</div>
+
+  <div class="ledger">
+    <div class="row">
+      <div class="chip" style="background:linear-gradient(155deg,#1c2027,#08090c)">BM</div>
+      <div class="name"><b>Black Mirror</b><span>2011 · Returning</span></div>
+      <div class="next"><span class="code">S07·E01</span><span class="t">Common People — 57 min</span></div>
+      <div class="punchcell">
+        <div class="punch">
+          <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="next"></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <span class="punch-cap">27 of 33 · series 81%</span>
+      </div>
+      <button class="stamp">Strike off</button>
+    </div>
+
+    <div class="row">
+      <div class="chip" style="background:linear-gradient(155deg,#15294d,#080f1e)">VOY</div>
+      <div class="name"><b>Star Trek: Voyager</b><span>1995 · Ended</span></div>
+      <div class="next"><span class="code">S07·E24</span><span class="t">Renaissance Man — 45 min</span></div>
+      <div class="punchcell">
+        <div class="punch">
+          <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="next"></i><i></i><i></i>
+        </div>
+        <span class="punch-cap">169 of 172 · series 98%</span>
+      </div>
+      <button class="stamp">Strike off</button>
+    </div>
+
+    <div class="row">
+      <div class="chip" style="background:linear-gradient(155deg,#4a1d10,#1d0b06)">MB</div>
+      <div class="name"><b>MythBusters</b><span>2003 · Ended</span></div>
+      <div class="next"><span class="code">S12·E08</span><span class="t">Traffic Tricks — 43 min</span></div>
+      <div class="punchcell">
+        <div class="punch">
+          <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="next"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <span class="punch-cap">272 of 284 · series 96%</span>
+      </div>
+      <button class="stamp">Strike off</button>
+    </div>
+
+    <div class="row">
+      <div class="chip" style="background:linear-gradient(155deg,#333d1f,#141a0c)">ST</div>
+      <div class="name"><b>SEAL Team</b><span>2017 · Ended</span></div>
+      <div class="next"><span class="code">S06·E09</span><span class="t">Damage Assessment — 42 min</span></div>
+      <div class="punchcell">
+        <div class="punch">
+          <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="next"></i><i></i>
+        </div>
+        <span class="punch-cap">112 of 114 · series 98%</span>
+      </div>
+      <button class="stamp">Strike off</button>
+    </div>
+
+    <div class="row">
+      <div class="chip" style="background:linear-gradient(155deg,#7c2d69,#0b2733)">MV</div>
+      <div class="name"><b>Miami Vice</b><span>1984 · Ended</span></div>
+      <div class="next"><span class="code">S05·E20</span><span class="t">Miracle Man — 48 min</span></div>
+      <div class="punchcell">
+        <div class="punch">
+          <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="next"></i><i></i><i></i><i></i>
+        </div>
+        <span class="punch-cap">110 of 112 · series 98%</span>
+      </div>
+      <button class="stamp">Strike off</button>
+    </div>
+
+    <div class="row">
+      <div class="chip" style="background:linear-gradient(155deg,#31404d,#10161c)">MK</div>
+      <div class="name"><b>Monk</b><span>2002 · Ended</span></div>
+      <div class="next"><span class="code">S08·E15</span><span class="t">Mr. Monk and the End, Part I — 44 min</span></div>
+      <div class="punchcell">
+        <div class="punch">
+          <i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="w"></i><i class="next"></i><i></i>
+        </div>
+        <span class="punch-cap">124 of 125 · series 99%</span>
+      </div>
+      <button class="stamp">Strike off</button>
+    </div>
+  </div>
+
+  <h2>Closed volumes</h2>
+  <div class="sub">143 shows fully caught up — reopened automatically when new episodes air.</div>
+  <div class="volumes">
+    <div class="vol"><b>Andor</b> <span class="mono">24/24</span></div>
+    <div class="vol"><b>Arcane</b> <span class="mono">18/18</span></div>
+    <div class="vol"><b>Breaking Bad</b> <span class="mono">62/62</span></div>
+    <div class="vol"><b>Better Call Saul</b> <span class="mono">63/63</span></div>
+    <div class="vol"><b>Band of Brothers</b> <span class="mono">10/10</span></div>
+    <div class="vol"><b>Battlestar Galactica</b> <span class="mono">73/73</span></div>
+    <div class="vol"><b>Boardwalk Empire</b> <span class="mono">56/56</span></div>
+    <div class="vol"><b>The West Wing</b> <span class="mono">154/154</span></div>
+    <div class="vol" style="color:var(--faint)">… 135 more</div>
+  </div>
+
+  <h2>Almanac</h2>
+  <div class="sub">Episodes on the way for shows you follow.</div>
+  <div class="almanac">
+    <div class="alm"><span class="date">SUN · 06 JUL</span><div class="what"><b>Euphoria</b><span>S03·E02 — Sanctuary</span></div><span class="in">in 3 days</span></div>
+    <div class="alm"><span class="date">WED · 09 JUL</span><div class="what"><b>South Park</b><span>S27·E06</span></div><span class="in">in 6 days</span></div>
+    <div class="alm"><span class="date">TUE · 15 JUL</span><div class="what"><b>Ahsoka</b><span>S02·E01 — Exiles</span></div><span class="in">in 12 days</span></div>
+  </div>
+</div>
+</body>
+</html>

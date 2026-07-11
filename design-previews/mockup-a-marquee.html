@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ShowTrack — Mockup A · Marquee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wdth,wght@75..125,300..800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #07090f;
+    --bg-raise: #0d1119;
+    --line: #1a2130;
+    --text: #e9edf4;
+    --dim: #8b94a7;
+    --faint: #525b6e;
+    --gold: #ffcf6e;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Archivo", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.5;
+    overflow-x: hidden;
+  }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; cursor: pointer; border: 0; background: none; color: inherit; }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 4px; }
+
+  .shell { display: flex; min-height: 100vh; }
+
+  /* ── Rail ─────────────────────────────── */
+  nav {
+    width: 216px; flex-shrink: 0; padding: 28px 18px;
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 2px;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .logo {
+    font-family: "Anton", sans-serif; font-size: 21px; letter-spacing: .04em;
+    text-transform: uppercase; margin: 0 10px 30px;
+  }
+  .logo em { font-style: normal; color: var(--gold); }
+  nav a {
+    padding: 10px 12px; border-radius: 9px; color: var(--dim);
+    font-weight: 500; letter-spacing: .01em;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  nav a:hover { color: var(--text); background: var(--bg-raise); }
+  nav a.active { color: var(--text); background: var(--bg-raise); box-shadow: inset 2px 0 0 var(--gold); }
+  nav a .n { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  nav .foot { margin-top: auto; color: var(--faint); font-size: 11.5px; padding: 0 12px; }
+
+  main { flex: 1; min-width: 0; padding: 34px 44px 64px; }
+
+  .eyebrow {
+    font-family: "Anton", sans-serif; font-size: 12px; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--dim); margin-bottom: 14px;
+  }
+  .eyebrow b { color: var(--gold); font-weight: 400; }
+
+  /* ── Hero: tonight ────────────────────── */
+  .hero {
+    position: relative; border-radius: 20px; overflow: hidden;
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(120% 180% at 85% 0%, rgba(64,224,208,.16), transparent 55%),
+      radial-gradient(110% 160% at 10% 110%, rgba(255,60,90,.14), transparent 50%),
+      linear-gradient(105deg, #0c1018 40%, #101623);
+    padding: 40px 44px 36px; margin-bottom: 44px;
+    animation: rise .5s ease both;
+  }
+  .hero::after { /* scanline sheen */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 3px);
+  }
+  .hero .marker {
+    font-family: "Anton", sans-serif; font-size: clamp(56px, 7vw, 92px); line-height: .95;
+    letter-spacing: .01em; color: var(--text);
+  }
+  .hero .marker span { color: var(--gold); }
+  .hero .show { font-size: 17px; font-weight: 600; color: var(--dim); margin-bottom: 6px; }
+  .hero .ep-title { font-size: 21px; font-weight: 700; margin-top: 10px; }
+  .hero .meta { color: var(--dim); margin-top: 6px; font-size: 13px; }
+  .hero .row { display: flex; align-items: flex-end; gap: 40px; flex-wrap: wrap; }
+  .hero .grow { flex: 1; min-width: 260px; }
+  .watch-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--gold); color: #14100a; font-weight: 700; font-size: 15px;
+    padding: 13px 26px; border-radius: 999px; margin-top: 22px;
+    box-shadow: 0 0 34px rgba(255,207,110,.35);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .watch-btn:hover { transform: translateY(-1px); box-shadow: 0 0 46px rgba(255,207,110,.5); }
+  .hero .prog { display: flex; align-items: center; gap: 10px; margin-top: 26px; max-width: 380px; }
+  .bar { flex: 1; height: 4px; background: #232b3d; border-radius: 2px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--gold); border-radius: 2px; }
+  .prog .cnt { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+  /* ── Shelves ──────────────────────────── */
+  .shelf { margin-bottom: 42px; }
+  .shelf-head { display: flex; align-items: baseline; justify-content: space-between; }
+  .cards {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 168px;
+    gap: 22px; overflow-x: auto; padding: 6px 6px 22px;
+    scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+  }
+  .card { width: 168px; }
+  .poster {
+    position: relative; aspect-ratio: 2/3; border-radius: var(--radius); overflow: hidden;
+    display: flex; align-items: flex-end; padding: 12px;
+    font-family: "Anton", sans-serif; font-size: 19px; line-height: 1.05;
+    letter-spacing: .02em; text-transform: uppercase; color: rgba(255,255,255,.92);
+    transition: transform .18s ease;
+  }
+  .card:hover .poster { transform: translateY(-4px) scale(1.015); }
+  /* the signature: each poster casts its own light */
+  .glow-teal   { background: linear-gradient(165deg,#0f3d3f,#071d22 70%); box-shadow: 0 18px 48px -12px rgba(45,212,191,.38); }
+  .glow-ember  { background: linear-gradient(165deg,#4a1d10,#1d0b06 70%); box-shadow: 0 18px 48px -12px rgba(251,146,60,.38); }
+  .glow-void   { background: linear-gradient(155deg,#1c2027,#08090c 65%); box-shadow: 0 18px 48px -12px rgba(148,163,184,.30); }
+  .glow-vice   { background: linear-gradient(165deg,#7c2d69,#0b2733 75%); box-shadow: 0 18px 48px -12px rgba(236,72,153,.4); }
+  .glow-olive  { background: linear-gradient(165deg,#333d1f,#141a0c 70%); box-shadow: 0 18px 48px -12px rgba(163,190,90,.32); }
+  .glow-navy   { background: linear-gradient(165deg,#15294d,#080f1e 70%); box-shadow: 0 18px 48px -12px rgba(96,165,250,.36); }
+  .glow-fog    { background: linear-gradient(165deg,#31404d,#10161c 70%); box-shadow: 0 18px 48px -12px rgba(147,197,253,.28); }
+  .glow-amber  { background: linear-gradient(165deg,#5c4008,#211703 70%); box-shadow: 0 18px 48px -12px rgba(251,191,36,.36); }
+  .glow-arcane { background: linear-gradient(160deg,#5b1e63 10%,#0e2f4d 80%); box-shadow: 0 18px 48px -12px rgba(217,70,239,.4); }
+  .glow-green  { background: linear-gradient(165deg,#14432b,#071b10 70%); box-shadow: 0 18px 48px -12px rgba(74,222,128,.34); }
+  .poster::before { /* film grain */
+    content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(115deg, rgba(255,255,255,.03) 0 1px, transparent 1px 4px);
+  }
+  .poster::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,.55)); }
+  .poster b { position: relative; z-index: 1; font-weight: 400; }
+  .card .info { padding: 12px 2px 0; }
+  .card .next { font-size: 12.5px; color: var(--dim); margin: 3px 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .next b { color: var(--text); font-weight: 600; }
+  .card .bar { height: 3px; margin-bottom: 10px; }
+  .tick {
+    width: 100%; text-align: center; padding: 8px 0; border-radius: 9px;
+    border: 1px solid var(--line); color: var(--dim); font-weight: 600; font-size: 12.5px;
+    transition: all .15s ease;
+  }
+  .tick:hover { border-color: var(--gold); color: var(--gold); background: rgba(255,207,110,.06); }
+
+  /* ── Up to date strip ─────────────────── */
+  .done-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .done {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px 7px 8px;
+    color: var(--dim); font-size: 13px;
+  }
+  .done .dot { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; }
+  .done b { color: var(--text); font-weight: 600; }
+
+  /* ── Airing soon ──────────────────────── */
+  .soon { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .soon-item {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--bg-raise); padding: 14px 16px;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  .soon-item .when { font-family: "Anton", sans-serif; font-size: 15px; color: var(--gold); letter-spacing: .06em; white-space: nowrap; }
+  .soon-item .what b { display: block; font-weight: 600; }
+  .soon-item .what span { color: var(--dim); font-size: 12.5px; }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+  @media (max-width: 860px) {
+    nav { display: none; }
+    main { padding: 24px 20px 48px; }
+    .hero { padding: 28px 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav aria-label="Sections">
+    <div class="logo">Show<em>Track</em></div>
+    <a class="active" href="#">Shows <span class="n">171</span></a>
+    <a href="#">Upcoming <span class="n">14</span></a>
+    <a href="#">Movies <span class="n">594</span></a>
+    <a href="#">Search</a>
+    <a href="#">Settings</a>
+    <div class="foot">10,883 episodes watched</div>
+  </nav>
+
+  <main>
+    <section class="hero" aria-label="Up next tonight">
+      <div class="eyebrow">Up next <b>tonight</b></div>
+      <div class="row">
+        <div class="grow">
+          <div class="show">Black Mirror</div>
+          <div class="marker">S07<span>E01</span></div>
+          <div class="ep-title">Common People</div>
+          <div class="meta">Aired Apr 10 · 57 min · 6 episodes left in season 7</div>
+          <button class="watch-btn">✓&nbsp; Mark watched</button>
+        </div>
+        <div class="grow">
+          <div class="prog"><div class="bar"><i style="width:81%"></i></div><span class="cnt">27 / 33</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="shelf" aria-label="Continue watching">
+      <div class="shelf-head"><div class="eyebrow">Continue watching</div></div>
+      <div class="cards">
+        <div class="card">
+          <div class="poster glow-void"><b>Black<br/>Mirror</b></div>
+          <div class="info">
+            <div class="next"><b>S07E01</b> · Common People</div>
+            <div class="bar"><i style="width:81%"></i></div>
+            <button class="tick">✓ Watched</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="poster glow-navy"><b>Star Trek<br/>Voyager</b></div>
+          <div class="info">
+            <div class="next"><b>S07E24</b> · Renaissance Man</div>
+            <div class="bar"><i style="width:98%"></i></div>
+            <button class="tick">✓ Watched</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="poster glow-ember"><b>Myth<br/>Busters</b></div>
+          <div class="info">
+            <div class="next"><b>S12E08</b> · Traffic Tricks</div>
+            <div class="bar"><i style="width:95%"></i></div>
+            <button class="tick">✓ Watched</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="poster glow-olive"><b>SEAL<br/>Team</b></div>
+          <div class="info">
+            <div class="next"><b>S06E09</b> · Damage Assessment</div>
+            <div class="bar"><i style="width:98%"></i></div>
+            <button class="tick">✓ Watched</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="poster glow-vice"><b>Miami<br/>Vice</b></div>
+          <div class="info">
+            <div class="next"><b>S05E20</b> · Miracle Man</div>
+            <div class="bar"><i style="width:98%"></i></div>
+            <button class="tick">✓ Watched</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="poster glow-fog"><b>Monk</b></div>
+          <div class="info">
+            <div class="next"><b>S08E15</b> · Mr. Monk and the End</div>
+            <div class="bar"><i style="width:99%"></i></div>
+            <button class="tick">✓ Watched</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="poster glow-teal"><b>Star Trek<br/>DS9</b></div>
+          <div class="info">
+            <div class="next"><b>S07E23</b> · Extreme Measures</div>
+            <div class="bar"><i style="width:98%"></i></div>
+            <button class="tick">✓ Watched</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="shelf" aria-label="Up to date">
+      <div class="shelf-head"><div class="eyebrow">Up to date · 143</div></div>
+      <div class="done-row">
+        <div class="done"><span class="dot" style="background:linear-gradient(140deg,#b45309,#7c2d12)"></span><span><b>Andor</b> · 24/24</span></div>
+        <div class="done"><span class="dot" style="background:linear-gradient(140deg,#a21caf,#155e75)"></span><span><b>Arcane</b> · 18/18</span></div>
+        <div class="done"><span class="dot" style="background:linear-gradient(140deg,#166534,#052e16)"></span><span><b>Breaking Bad</b> · 62/62</span></div>
+        <div class="done"><span class="dot" style="background:linear-gradient(140deg,#ca8a04,#713f12)"></span><span><b>Better Call Saul</b> · 63/63</span></div>
+        <div class="done"><span class="dot" style="background:linear-gradient(140deg,#334155,#0f172a)"></span><span><b>Band of Brothers</b> · 10/10</span></div>
+        <div class="done"><span class="dot" style="background:linear-gradient(140deg,#1d4ed8,#172554)"></span><span><b>Battlestar Galactica</b> · 73/73</span></div>
+        <div class="done" style="border-style:dashed"><span style="padding-left:8px">+ 137 more</span></div>
+      </div>
+    </section>
+
+    <section class="shelf" aria-label="Airing soon">
+      <div class="shelf-head"><div class="eyebrow">Airing soon</div></div>
+      <div class="soon">
+        <div class="soon-item"><div class="what"><b>Euphoria</b><span>S03E02 · Sanctuary</span></div><div class="when">SUN · JUL 6</div></div>
+        <div class="soon-item"><div class="what"><b>South Park</b><span>S27E06</span></div><div class="when">WED · JUL 9</div></div>
+        <div class="soon-item"><div class="what"><b>Ahsoka</b><span>S02E01 · Exiles</span></div><div class="when">TUE · JUL 15</div></div>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

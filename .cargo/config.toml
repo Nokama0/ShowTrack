@@ -1,0 +1,9 @@
+# Dependency panic messages embed absolute source paths; remap them so shipped
+# binaries carry no local filesystem layout (or the Windows username).
+[build]
+rustflags = [
+  "--remap-path-prefix", 'C:/Users/Nokama/.cargo=/cargo',
+  "--remap-path-prefix", 'C:\Users\Nokama\.cargo=/cargo',
+  "--remap-path-prefix", 'G:/Projects/showtrack=/showtrack',
+  "--remap-path-prefix", 'G:\Projects\showtrack=/showtrack',
+]

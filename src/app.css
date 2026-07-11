@@ -1,0 +1,234 @@
+:root {
+  interpolate-size: allow-keywords; /* animatable height:auto for <details> */
+  --main-pad-y: 30px;
+  --main-pad-x: 48px;
+  --bg: #07090f;
+  --raise: #0d1119;
+  --raise-hi: #131927;
+  --line: #1a2130;
+  --text: #e9edf4;
+  --dim: #8b94a7;
+  --faint: #525b6e;
+  --gold: #ffcf6e;
+  --gold-dim: rgba(255, 207, 110, 0.14);
+  --red: #ff5470;
+  --r-lg: 18px;
+  --r-md: 12px;
+}
+* { box-sizing: border-box; }
+/* no page ever scrolls sideways; stray overflow would widen the layout
+   viewport on Android and unanchor the fixed tab bar.
+   scrollbar-gutter keeps the scrollbar's lane reserved, so it appearing
+   (long pages) or hiding (modal scroll lock) never shifts the layout */
+html { overflow-x: clip; scrollbar-gutter: stable; }
+/* custom scrollbar in place of the Windows default: slim, dark, on-theme.
+   desktop only; styling it on Android would turn the overlay bar into a
+   space-taking classic one */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #232b3d; border-radius: 999px;
+    border: 3px solid var(--bg); background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #34405c; border-width: 3px; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+}
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: "Archivo Variable", "Archivo", system-ui, sans-serif;
+  font-size: 14px; line-height: 1.5;
+}
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+/* Android WebView paints its own square grey tap flash; our :active states replace it */
+* { -webkit-tap-highlight-color: transparent; }
+::selection { background: var(--gold-dim); color: var(--text); }
+
+h1 {
+  font-family: "Anton", sans-serif; font-weight: 400; font-size: 30px;
+  letter-spacing: 0.03em; text-transform: uppercase; margin: 0;
+}
+h1 span { color: var(--gold); }
+h2 {
+  font-family: "Anton", sans-serif; font-weight: 400; font-size: 13px;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim);
+  margin: 34px 0 16px;
+}
+h2 b { color: var(--gold); font-weight: 400; }
+h2 small {
+  font-family: "Archivo Variable", sans-serif; letter-spacing: 0; text-transform: none;
+  color: var(--faint); font-size: 12px; margin-left: 10px;
+}
+
+/* every interactive element animates on enter/leave/press */
+button, a, input, select, summary, .chip, .tag, .panel, .badge, .stat {
+  transition:
+    transform 0.12s ease, color 0.18s ease, background-color 0.18s ease,
+    border-color 0.18s ease, box-shadow 0.25s ease, filter 0.18s ease, opacity 0.18s ease;
+}
+
+button {
+  font: inherit; cursor: pointer; border: 0; border-radius: var(--r-md);
+  background: var(--raise-hi); color: var(--text); padding: 7px 14px;
+}
+button:hover { filter: brightness(1.15); }
+button:active { transform: scale(0.96); }
+a:active { opacity: 0.7; }
+
+/* custom-drawn checkbox: the native (Fluent) control resizes its layout box for
+   one frame when toggled, shoving the row text sideways; appearance:none avoids
+   that entirely and keeps the look identical on Windows and Android */
+input[type="checkbox"] {
+  appearance: none; margin: 0; flex: none;
+  width: 16px; height: 16px;
+  border: 1px solid var(--faint); border-radius: 5px;
+  background: none; cursor: pointer;
+  display: inline-grid; place-content: center;
+  transition: transform 0.12s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+input[type="checkbox"]::before {
+  content: ""; width: 10px; height: 10px;
+  background: #14100a;
+  clip-path: polygon(14% 52%, 0 69%, 38% 100%, 100% 22%, 84% 8%, 36% 71%);
+  transform: scale(0);
+  transition: transform 0.15s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+input[type="checkbox"]:active { transform: scale(0.8); }
+input[type="checkbox"]:checked {
+  background: var(--gold); border-color: var(--gold);
+  animation: pop 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+input[type="checkbox"]:checked::before { transform: scale(1); }
+/* the check itself is the state indicator; a ring around it reads as an error glow */
+input[type="checkbox"]:focus-visible { outline: none; }
+button:disabled { opacity: 0.5; cursor: default; filter: none; }
+.btn-gold {
+  display: inline-flex; align-items: center; gap: 9px;
+  background: var(--gold); color: #14100a; font-weight: 700; font-size: 14.5px;
+  padding: 12px 22px; border-radius: 999px;
+  box-shadow: 0 0 32px rgba(255, 207, 110, 0.28);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-gold:hover { transform: translateY(-1px); box-shadow: 0 0 44px rgba(255, 207, 110, 0.42); filter: none; }
+.btn-ghost {
+  padding: 12px 20px; border-radius: 999px; border: 1px solid var(--line);
+  background: none; color: var(--dim); font-weight: 600; font-size: 13.5px;
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--faint); filter: none; }
+
+input, select {
+  font: inherit; background: var(--raise); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px 12px; outline: none;
+}
+/* text fields: the global focus outline doubled up with the border highlight;
+   use a soft glow instead */
+input:focus-visible, select:focus-visible { outline: none; }
+/* checkboxes excluded: a tapped box keeps :focus and would hold the gold ring */
+input:not([type="checkbox"]):focus, select:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(255, 207, 110, 0.12);
+}
+
+.panel { background: var(--raise); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 18px 20px; }
+.dim { color: var(--dim); }
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  padding: 7px 15px; border-radius: 999px; font-weight: 600; font-size: 13px;
+  background: var(--raise); border: 1px solid var(--line); color: var(--dim);
+}
+.chip.on { background: var(--gold); border-color: var(--gold); color: #14100a; }
+.chip:hover:not(.on) { color: var(--text); border-color: var(--faint); filter: none; }
+
+.stats { display: flex; gap: 10px; }
+.stat {
+  background: var(--raise); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 9px 16px; text-align: center;
+}
+.stat b { display: block; font-family: "Anton", sans-serif; font-weight: 400; font-size: 18px; letter-spacing: 0.03em; }
+.stat span { font-size: 10px; color: var(--dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+.stat.g b { color: var(--gold); }
+
+.badge {
+  display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em;
+  background: var(--gold-dim); color: var(--gold); border-radius: 999px; padding: 3px 10px;
+}
+.badge.dim { background: rgba(139, 148, 167, 0.12); color: var(--dim); }
+
+.bar { height: 5px; background: #232b3d; border-radius: 999px; }
+.bar i {
+  display: block; height: 100%; background: var(--gold); border-radius: 999px;
+  transition: width 0.45s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.tag {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--raise); border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 15px; font-size: 13px; color: var(--dim);
+}
+.tag b { color: var(--text); font-weight: 600; }
+.tag i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 44px; align-items: start; }
+.cols.norail { grid-template-columns: minmax(0, 1fr); } /* airing rail feature off */
+.rail {
+  position: sticky; top: 28px; min-width: 0;
+  animation: rise 0.5s 0.12s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.rail h2:first-child { margin-top: 6px; }
+@media (max-width: 1719px) {
+  .cols { grid-template-columns: 1fr; }
+  .rail { position: static; }
+}
+
+.grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 218px)); gap: 24px; }
+.grid-posters { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 214px)); gap: 20px; }
+
+.banner {
+  background: #2b2410; border: 1px solid #6b5a1e; color: var(--gold);
+  border-radius: var(--r-md); padding: 8px 12px; margin-bottom: 16px;
+  display: flex; justify-content: space-between; gap: 12px;
+  animation: rise 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.banner button { background: none; padding: 0 4px; }
+
+/* ── Motion (deliberately NOT gated on prefers-reduced-motion:
+   this app always animates, per the user's standing preference) ── */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+}
+@keyframes fadein {
+  from { opacity: 0; }
+}
+@keyframes pop {
+  50% { transform: scale(1.25); }
+}
+.rise { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+/* fade only: a transform here would turn position:fixed children (modals)
+   into page-anchored elements instead of viewport-anchored ones.
+   fill backwards, not both: a finished fill-both animation keeps this wrapper
+   a stacking context forever, trapping modal overlays under the tab bar */
+.page-enter { animation: fadein 0.3s ease backwards; }
+
+/* smooth open/close for every <details> (rail, season blocks) */
+details::details-content {
+  block-size: 0; overflow-y: clip;
+  transition: content-visibility 0.35s allow-discrete, block-size 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+details[open]::details-content { block-size: auto; }
+
+/* ── Mobile (≤760px) ─────────────────────────────────────────── */
+@media (max-width: 760px) {
+  h1 { font-size: 23px; }
+  h2 { margin: 26px 0 12px; }
+  /* compact enough that the four show filters share one row */
+  .chips { gap: 6px; }
+  .chip { padding: 6px 11px; font-size: 12px; white-space: nowrap; }
+  .grid-cards, .grid-posters { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 14px; }
+  .stats { flex-wrap: wrap; gap: 8px; }
+  .stat { padding: 7px 12px; }
+  .cols { gap: 26px; }
+  .rail { animation-delay: 0.05s; }
+  button { padding: 9px 16px; } /* bigger touch targets */
+}
