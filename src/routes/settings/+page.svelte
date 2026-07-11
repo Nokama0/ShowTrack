@@ -677,6 +677,7 @@
   /* the shared active marker; sliding top/height carry it between entries */
   .smarker {
     position: absolute; left: 0; width: 2px; border-radius: 2px;
+    z-index: 1; /* above the entries, whose backgrounds would otherwise cover it at rest */
     background: var(--gold); pointer-events: none;
     transition: top 0.3s cubic-bezier(0.2, 0.7, 0.3, 1), height 0.3s cubic-bezier(0.2, 0.7, 0.3, 1);
     animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) 80ms both;
