@@ -10,6 +10,11 @@ use crate::error::{AppError, Result};
 const LATEST_URL: &str = "https://api.github.com/repos/Nokama0/ShowTrack/releases/latest";
 const RELEASES_PAGE: &str = "https://github.com/Nokama0/ShowTrack/releases";
 
+/// The live URL, unless a test points the check at a mock server.
+fn latest_url() -> String {
+    std::env::var("SHOWTRACK_UPDATE_URL").unwrap_or_else(|_| LATEST_URL.to_string())
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
@@ -61,7 +66,7 @@ pub fn current_version() -> (u64, u64, u64) {
 
 pub async fn check(http: &reqwest::Client) -> Result<Option<UpdateInfo>> {
     let resp = http
-        .get(LATEST_URL)
+        .get(latest_url())
         .header("User-Agent", "ShowTrack")
         .header("Accept", "application/vnd.github+json")
         .timeout(std::time::Duration::from_secs(15))
