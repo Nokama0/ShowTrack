@@ -81,7 +81,8 @@ pub fn seed_from_library(conn: &Connection) -> Result<usize> {
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
         .collect::<std::result::Result<_, _>>()?;
     for (id, state, fav, added) in shows {
-        append(conn, "show", id, "add", Some(serde_json::json!({"state": state})), &added)?;
+        let src = if id < 0 { "movie" } else { "tv" };
+        append(conn, "show", id, "add", Some(serde_json::json!({"state": state, "src": src})), &added)?;
         n += 1;
         if fav != 0 {
             append(conn, "show", id, "favorite", Some(serde_json::json!({"value": true})), &added)?;
@@ -104,8 +105,9 @@ pub fn seed_from_library(conn: &Connection) -> Result<usize> {
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)))?
         .collect::<std::result::Result<_, _>>()?;
     for (id, state, at, rew, fav, added) in movies {
+        let src = if id < 0 { "tv" } else { "movie" };
         append(conn, "movie", id, "add",
-               Some(serde_json::json!({"state": state, "watched_at": at})), &added)?;
+               Some(serde_json::json!({"state": state, "watched_at": at, "src": src})), &added)?;
         n += 1;
         if fav != 0 {
             append(conn, "movie", id, "favorite", Some(serde_json::json!({"value": true})), &added)?;
@@ -216,8 +218,31 @@ pub fn show_toggle_favorite(conn: &Connection, id: i64, now: &str) -> Result<boo
     Ok(v)
 }
 
-pub fn log_show_add(conn: &Connection, id: i64, state: &str, now: &str) -> Result<()> {
-    append(conn, "show", id, "add", Some(json!({"state": state})), now)
+/// `src` names the TMDB record backing this entry: "tv" for native shows,
+/// "movie" for movies filed under Shows (negative local id) — the receiver
+/// needs it to fetch the right endpoint.
+pub fn log_show_add(conn: &Connection, id: i64, state: &str, src: &str, now: &str) -> Result<()> {
+    append(conn, "show", id, "add", Some(json!({"state": state, "src": src})), now)
+}
+
+/// Delete a show entirely (cascade drops its episodes and watches).
+pub fn show_remove(conn: &Connection, id: i64, now: &str) -> Result<()> {
+    conn.execute("DELETE FROM shows WHERE tmdb_id=?1", [id])?;
+    append(conn, "show", id, "remove", None, now)
+}
+
+/// Delete a movie entirely.
+pub fn movie_remove(conn: &Connection, id: i64, now: &str) -> Result<()> {
+    conn.execute("DELETE FROM movies WHERE tmdb_id=?1", [id])?;
+    append(conn, "movie", id, "remove", None, now)
+}
+
+/// Set the rewatch count to an absolute value (never below zero).
+pub fn movie_set_rewatch(conn: &Connection, id: i64, count: i64, now: &str) -> Result<i64> {
+    let c = count.max(0);
+    conn.execute("UPDATE movies SET rewatch_count=?2 WHERE tmdb_id=?1", params![id, c])?;
+    append(conn, "movie", id, "rewatch", Some(json!({"count": c})), now)?;
+    Ok(c)
 }
 
 pub fn movie_set_state(conn: &Connection, id: i64, state: &str, now: &str) -> Result<()> {
@@ -239,8 +264,9 @@ pub fn movie_toggle_favorite(conn: &Connection, id: i64, now: &str) -> Result<bo
 }
 
 pub fn log_movie_add(conn: &Connection, id: i64, state: &str,
-                     watched_at: Option<&str>, now: &str) -> Result<()> {
-    append(conn, "movie", id, "add", Some(json!({"state": state, "watched_at": watched_at})), now)
+                     watched_at: Option<&str>, src: &str, now: &str) -> Result<()> {
+    append(conn, "movie", id, "add",
+           Some(json!({"state": state, "watched_at": watched_at, "src": src})), now)
 }
 
 /// Import watches have NULL watched_at by design; the op ts is the import time.
@@ -278,7 +304,9 @@ fn group_ops(entity: &str, op: &str) -> &'static [&'static str] {
         ("ep", _) => &["watch", "unwatch"],
         (_, "favorite") => &["favorite"],
         (_, "rewatch") => &["rewatch"],
-        _ => &["add", "state"],
+        // remove shares the existence group: a newer remove beats an older
+        // add/state, and a newer add re-adds after an older remove
+        _ => &["add", "state", "remove"],
     }
 }
 
@@ -355,6 +383,14 @@ pub fn apply_op_local(conn: &Connection, op: &Op) -> Result<bool> {
                          params![op.entity_id, n])?;
             Ok(true)
         }
+        ("show", "remove") => {
+            conn.execute("DELETE FROM shows WHERE tmdb_id=?1", [op.entity_id])?;
+            Ok(true) // cascade drops episodes and watches; delete-of-nothing is fine
+        }
+        ("movie", "remove") => {
+            conn.execute("DELETE FROM movies WHERE tmdb_id=?1", [op.entity_id])?;
+            Ok(true)
+        }
         _ => Ok(false), // unknown op kind from a future version: skip, never fail
     }
 }
@@ -402,24 +438,35 @@ pub async fn apply_ops<T: crate::tmdb::Tmdb + ?Sized>(
                     out.error = Some("TMDB key needed to fetch new items".into());
                     break;
                 };
-                match t.show_with_episodes(show_id).await {
-                    Ok(full) => {
-                        let is_add = op.op == "add";
-                        let state = pstr(&op, "state").unwrap_or_else(|| "watching".into());
-                        let ts = op.ts.clone();
-                        if let Err(e) = with_db(db, move |c| {
-                            let existed = crate::queries::show_exists(c, full.meta.tmdb_id)?;
-                            crate::queries::upsert_show_meta(c, &full.meta, &ts)?;
-                            if !existed && is_add {
-                                crate::queries::set_show_user(c, full.meta.tmdb_id, &state, false, None, None)?;
-                            }
-                            crate::queries::upsert_episodes(c, full.meta.tmdb_id, &full.episodes)
-                        }).await {
-                            out.error = Some(e.to_string());
-                            break;
-                        }
+                // shows filed from a movie record carry a negative local id
+                let src_movie = pstr(&op, "src").as_deref() == Some("movie") || show_id < 0;
+                let full = if src_movie {
+                    match t.movie(show_id.abs()).await {
+                        Ok(m) => crate::tmdb::ShowFull {
+                            meta: crate::tmdb::ShowMeta::from_movie(&m),
+                            episodes: Vec::new(),
+                        },
+                        Err(e) => { out.error = Some(format!("fetch show {show_id}: {e}")); break; }
                     }
-                    Err(e) => { out.error = Some(format!("fetch show {show_id}: {e}")); break; }
+                } else {
+                    match t.show_with_episodes(show_id).await {
+                        Ok(f) => f,
+                        Err(e) => { out.error = Some(format!("fetch show {show_id}: {e}")); break; }
+                    }
+                };
+                let is_add = op.op == "add";
+                let state = pstr(&op, "state").unwrap_or_else(|| "watching".into());
+                let ts = op.ts.clone();
+                if let Err(e) = with_db(db, move |c| {
+                    let existed = crate::queries::show_exists(c, full.meta.tmdb_id)?;
+                    crate::queries::upsert_show_meta(c, &full.meta, &ts)?;
+                    if !existed && is_add {
+                        crate::queries::set_show_user(c, full.meta.tmdb_id, &state, false, None, None)?;
+                    }
+                    crate::queries::upsert_episodes(c, full.meta.tmdb_id, &full.episodes)
+                }).await {
+                    out.error = Some(e.to_string());
+                    break;
                 }
             }
         }
@@ -434,25 +481,33 @@ pub async fn apply_ops<T: crate::tmdb::Tmdb + ?Sized>(
                     out.error = Some("TMDB key needed to fetch new items".into());
                     break;
                 };
-                match t.movie(id).await {
-                    Ok(meta) => {
-                        let state = pstr(&op, "state").unwrap_or_else(|| "watchlist".into());
-                        let at = pstr(&op, "watched_at");
-                        let ts = op.ts.clone();
-                        if let Err(e) = with_db(db, move |c| {
-                            let existed = crate::queries::movie_exists(c, meta.tmdb_id)?;
-                            crate::queries::upsert_movie_meta(c, &meta, &ts)?;
-                            if !existed {
-                                crate::queries::set_movie_user(c, meta.tmdb_id, &state,
-                                    at.as_deref(), 0, false, None, None)?;
-                            }
-                            Ok(())
-                        }).await {
-                            out.error = Some(e.to_string());
-                            break;
-                        }
+                // movies filed from a TV record carry a negative local id
+                let src_tv = pstr(&op, "src").as_deref() == Some("tv") || id < 0;
+                let meta = if src_tv {
+                    match t.show_with_episodes(id.abs()).await {
+                        Ok(f) => crate::tmdb::MovieMeta::from_show(&f.meta),
+                        Err(e) => { out.error = Some(format!("fetch movie {id}: {e}")); break; }
                     }
-                    Err(e) => { out.error = Some(format!("fetch movie {id}: {e}")); break; }
+                } else {
+                    match t.movie(id).await {
+                        Ok(m) => m,
+                        Err(e) => { out.error = Some(format!("fetch movie {id}: {e}")); break; }
+                    }
+                };
+                let state = pstr(&op, "state").unwrap_or_else(|| "watchlist".into());
+                let at = pstr(&op, "watched_at");
+                let ts = op.ts.clone();
+                if let Err(e) = with_db(db, move |c| {
+                    let existed = crate::queries::movie_exists(c, meta.tmdb_id)?;
+                    crate::queries::upsert_movie_meta(c, &meta, &ts)?;
+                    if !existed {
+                        crate::queries::set_movie_user(c, meta.tmdb_id, &state,
+                            at.as_deref(), 0, false, None, None)?;
+                    }
+                    Ok(())
+                }).await {
+                    out.error = Some(e.to_string());
+                    break;
                 }
             }
         }
@@ -593,6 +648,40 @@ mod tests {
     }
 
     #[test]
+    fn remove_deletes_and_competes_in_the_existence_group() {
+        let conn = crate::db::open_memory().unwrap();
+        fixture(&conn);
+        show_remove(&conn, 1, "2026-07-05T00:00:00Z").unwrap();
+        assert!(!crate::queries::show_exists(&conn, 1).unwrap());
+        // cascade dropped the episodes too
+        let n: i64 = conn.query_row("SELECT COUNT(*) FROM episodes", [], |r| r.get(0)).unwrap();
+        assert_eq!(n, 0);
+        // an OLDER peer add loses to the newer local remove
+        let peer_add = Op { seq: 1, ts: "2026-07-01T00:00:00Z".into(), entity: "show".into(),
+            entity_id: 1, op: "add".into(), payload: Some(json!({"state": "watching", "src": "tv"})) };
+        assert!(!apply_op_local(&conn, &peer_add).unwrap());
+        // a NEWER peer remove op applies idempotently on a missing row
+        let peer_rm = Op { seq: 2, ts: "2026-07-06T00:00:00Z".into(), entity: "show".into(),
+            entity_id: 1, op: "remove".into(), payload: None };
+        assert!(apply_op_local(&conn, &peer_rm).unwrap());
+        // movies mirror
+        movie_remove(&conn, 50, "2026-07-05T00:00:00Z").unwrap();
+        assert!(!crate::queries::movie_exists(&conn, 50).unwrap());
+    }
+
+    #[test]
+    fn set_rewatch_is_absolute_and_never_negative() {
+        let conn = crate::db::open_memory().unwrap();
+        fixture(&conn);
+        assert_eq!(movie_set_rewatch(&conn, 50, 3, NOW).unwrap(), 3);
+        assert_eq!(movie_set_rewatch(&conn, 50, -2, NOW).unwrap(), 0);
+        let ops = ops_since(&conn, 0).unwrap();
+        let counts: Vec<i64> = ops.iter().filter(|o| o.op == "rewatch")
+            .map(|o| o.payload.as_ref().unwrap()["count"].as_i64().unwrap()).collect();
+        assert_eq!(counts, vec![3, 0]);
+    }
+
+    #[test]
     fn lww_favorite_and_state_do_not_fight() {
         let conn = crate::db::open_memory().unwrap();
         fixture(&conn);
@@ -650,7 +739,7 @@ mod tests {
         {
             let c = a.lock().unwrap();
             fixture(&c);
-            log_show_add(&c, 1, "watching", "2026-07-01T00:00:00Z").unwrap();
+            log_show_add(&c, 1, "watching", "tv", "2026-07-01T00:00:00Z").unwrap();
             episode_mark(&c, 10, true, "2026-07-01T01:00:00Z").unwrap();
         }
         // B favorites a movie it adds
@@ -658,7 +747,7 @@ mod tests {
             let c = b.lock().unwrap();
             conn_exec(&c, "INSERT INTO movies(tmdb_id,title,my_state,added_at)
                            VALUES(50,'M','watchlist','2026-06-01T00:00:00Z')");
-            log_movie_add(&c, 50, "watchlist", None, "2026-07-01T00:00:00Z").unwrap();
+            log_movie_add(&c, 50, "watchlist", None, "movie", "2026-07-01T00:00:00Z").unwrap();
             movie_toggle_favorite(&c, 50, "2026-07-01T01:00:00Z").unwrap();
         }
         let ops_a = { let c = a.lock().unwrap(); ops_since(&c, 0).unwrap() };

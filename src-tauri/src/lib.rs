@@ -13,6 +13,7 @@ pub mod sync_client;
 pub mod sync_proto;
 pub mod sync_server;
 pub mod tmdb;
+pub mod updater;
 
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -117,6 +118,12 @@ pub fn run() {
             commands::movies_list,
             commands::movie_set_state,
             commands::movie_rewatch,
+            commands::movie_set_rewatch,
+            commands::show_remove,
+            commands::movie_remove,
+            commands::title_add,
+            commands::update_check,
+            commands::update_install,
             commands::movie_toggle_favorite,
             commands::search_tmdb,
             commands::show_add,

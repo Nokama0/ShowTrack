@@ -397,7 +397,7 @@ pub fn list_movies(conn: &Connection) -> Result<Vec<MovieRow>> {
 pub fn shows_to_refresh(conn: &Connection) -> Result<Vec<i64>> {
     let mut st = conn.prepare(
         "SELECT tmdb_id FROM shows
-         WHERE my_state='watching'
+         WHERE my_state='watching' AND tmdb_id > 0
            AND (tmdb_status IS NULL OR tmdb_status NOT IN ('Ended','Canceled'))
          ORDER BY tmdb_id")?;
     let rows = st.query_map([], |r| r.get(0))?;

@@ -243,6 +243,24 @@ pub async fn movie_rewatch(state: State<'_, AppState>, id: i64) -> CmdResult<i64
 }
 
 #[tauri::command]
+pub async fn movie_set_rewatch(state: State<'_, AppState>, id: i64, count: i64) -> CmdResult<i64> {
+    with_db(&state.db, move |c| oplog::movie_set_rewatch(c, id, count, &now_rfc3339())).await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn show_remove(state: State<'_, AppState>, id: i64) -> CmdResult<()> {
+    with_db(&state.db, move |c| oplog::show_remove(c, id, &now_rfc3339())).await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn movie_remove(state: State<'_, AppState>, id: i64) -> CmdResult<()> {
+    with_db(&state.db, move |c| oplog::movie_remove(c, id, &now_rfc3339())).await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn movie_toggle_favorite(state: State<'_, AppState>, id: i64) -> CmdResult<bool> {
     with_db(&state.db, move |c| oplog::movie_toggle_favorite(c, id, &now_rfc3339())).await
         .map_err(|e| e.to_string())
@@ -258,8 +276,9 @@ pub async fn search_tmdb(state: State<'_, AppState>, query: String) -> CmdResult
         .map_err(|e| e.to_string())?;
     Ok(results.into_iter().map(|r| {
         let in_library = match r.media_type.as_str() {
-            "tv" => show_ids.contains(&r.tmdb_id),
-            _ => movie_ids.contains(&r.tmdb_id),
+            // cross-filed entries live in the other table under a negative id
+            "tv" => show_ids.contains(&r.tmdb_id) || movie_ids.contains(&-r.tmdb_id),
+            _ => movie_ids.contains(&r.tmdb_id) || show_ids.contains(&-r.tmdb_id),
         };
         SearchItem {
             tmdb_id: r.tmdb_id, media_type: r.media_type, title: r.title,
@@ -276,7 +295,7 @@ pub async fn show_add(state: State<'_, AppState>, tmdb_id: i64, my_state: String
         queries::upsert_show_meta(c, &full.meta, &now_rfc3339())?;
         queries::set_show_user(c, full.meta.tmdb_id, &my_state, false, None, None)?;
         queries::upsert_episodes(c, full.meta.tmdb_id, &full.episodes)?;
-        oplog::log_show_add(c, full.meta.tmdb_id, &my_state, &now_rfc3339())?;
+        oplog::log_show_add(c, full.meta.tmdb_id, &my_state, "tv", &now_rfc3339())?;
         Ok(())
     })
     .await
@@ -292,11 +311,96 @@ pub async fn movie_add(state: State<'_, AppState>, tmdb_id: i64, my_state: Strin
         queries::upsert_movie_meta(c, &meta, &now)?;
         let watched_at = (my_state == "watched").then(|| now.clone());
         queries::set_movie_user(c, meta.tmdb_id, &my_state, watched_at.as_deref(), 0, false, None, None)?;
-        oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), &now)?;
+        oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), "movie", &now)?;
         Ok(())
     })
     .await
     .map_err(|e| e.to_string())
+}
+
+// ---------- cross-type add ----------
+
+/// Add a searched title into either section, regardless of which type TMDB
+/// filed it under. Cross-filed entries store the other type's record with a
+/// NEGATIVE local id (see tmdb::ShowMeta::from_movie / MovieMeta::from_show).
+#[tauri::command]
+pub async fn title_add(state: State<'_, AppState>, tmdb_id: i64, src: String,
+                       target: String, my_state: String) -> CmdResult<()> {
+    let tmdb = client(&state).await?;
+    match (src.as_str(), target.as_str()) {
+        ("tv", "show") => {
+            let full = tmdb.show_with_episodes(tmdb_id).await.map_err(|e| e.to_string())?;
+            with_db(&state.db, move |c| {
+                queries::upsert_show_meta(c, &full.meta, &now_rfc3339())?;
+                queries::set_show_user(c, full.meta.tmdb_id, &my_state, false, None, None)?;
+                queries::upsert_episodes(c, full.meta.tmdb_id, &full.episodes)?;
+                oplog::log_show_add(c, full.meta.tmdb_id, &my_state, "tv", &now_rfc3339())
+            })
+            .await
+            .map_err(|e| e.to_string())
+        }
+        ("movie", "movie") => {
+            let meta = tmdb.movie(tmdb_id).await.map_err(|e| e.to_string())?;
+            with_db(&state.db, move |c| {
+                let now = now_rfc3339();
+                queries::upsert_movie_meta(c, &meta, &now)?;
+                let watched_at = (my_state == "watched").then(|| now.clone());
+                queries::set_movie_user(c, meta.tmdb_id, &my_state, watched_at.as_deref(), 0, false, None, None)?;
+                oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), "movie", &now)
+            })
+            .await
+            .map_err(|e| e.to_string())
+        }
+        ("tv", "movie") => {
+            let show = tmdb.tv_base(tmdb_id).await.map_err(|e| e.to_string())?;
+            let meta = crate::tmdb::MovieMeta::from_show(&show);
+            with_db(&state.db, move |c| {
+                let now = now_rfc3339();
+                queries::upsert_movie_meta(c, &meta, &now)?;
+                let watched_at = (my_state == "watched").then(|| now.clone());
+                queries::set_movie_user(c, meta.tmdb_id, &my_state, watched_at.as_deref(), 0, false, None, None)?;
+                oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), "tv", &now)
+            })
+            .await
+            .map_err(|e| e.to_string())
+        }
+        ("movie", "show") => {
+            let movie = tmdb.movie(tmdb_id).await.map_err(|e| e.to_string())?;
+            let meta = crate::tmdb::ShowMeta::from_movie(&movie);
+            with_db(&state.db, move |c| {
+                queries::upsert_show_meta(c, &meta, &now_rfc3339())?;
+                queries::set_show_user(c, meta.tmdb_id, &my_state, false, None, None)?;
+                oplog::log_show_add(c, meta.tmdb_id, &my_state, "movie", &now_rfc3339())
+            })
+            .await
+            .map_err(|e| e.to_string())
+        }
+        _ => Err("unknown add combination".into()),
+    }
+}
+
+// ---------- updater ----------
+
+#[tauri::command]
+pub async fn update_check(state: State<'_, AppState>) -> CmdResult<Option<crate::updater::UpdateInfo>> {
+    crate::updater::check(&state.http).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn update_install(app: AppHandle, state: State<'_, AppState>, url: String) -> CmdResult<()> {
+    #[cfg(target_os = "android")]
+    {
+        let _ = (&app, &state, &url);
+        Err("on Android, install the new APK from the releases page".into())
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let path = crate::updater::download_installer(&state.http, &url).await
+            .map_err(|e| e.to_string())?;
+        std::process::Command::new(&path).spawn().map_err(|e| e.to_string())?;
+        app.exit(0);
+        Ok(())
+    }
 }
 
 // ---------- misc ----------
@@ -403,7 +507,8 @@ pub async fn anime_scan(state: State<'_, AppState>) -> CmdResult<i64> {
     let _guard = BusyGuard::acquire(&state)?;
     let tmdb = client(&state).await?;
     let ids: Vec<i64> = with_db(&state.db, |c| {
-        let mut st = c.prepare("SELECT tmdb_id FROM shows ORDER BY tmdb_id")?;
+        // negative ids are cross-filed movie records with no TV entry to check
+        let mut st = c.prepare("SELECT tmdb_id FROM shows WHERE tmdb_id > 0 ORDER BY tmdb_id")?;
         let v = st.query_map([], |r| r.get(0))?.collect::<std::result::Result<_, _>>()?;
         Ok(v)
     })

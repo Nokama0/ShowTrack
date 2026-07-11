@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { goto } from "$app/navigation";
   import { page } from "$app/state";
+  import { confirm } from "@tauri-apps/plugin-dialog";
   import { api, imgUrl } from "$lib/api";
   import { fmtRuntime, relDays } from "$lib/format";
   import type { EpisodeRow, ShowDetail } from "$lib/types";
@@ -136,6 +138,21 @@
     });
   }
 
+  async function removeShow() {
+    if (!detail) return;
+    const ok = await confirm(
+      `Remove ${detail.show.name} from your library? Its watch history goes with it.`,
+      { title: "ShowTrack", kind: "warning" },
+    );
+    if (!ok) return;
+    try {
+      await api.showRemove(id);
+      goto("/", { replaceState: true });
+    } catch (e) {
+      actionError = String(e);
+    }
+  }
+
   async function markAll() {
     epPrompt = null;
     await safely(async () => {
@@ -192,6 +209,7 @@
           onchange={(v) => setState(v)}
         />
         <button class="btn-ghost" onclick={markAll}>Mark all aired watched</button>
+        <button class="btn-ghost removebtn" onclick={removeShow}>Remove from library</button>
       </div>
       {#if actionError}<p class="acterr">{actionError}</p>{/if}
       {#if priorPrompt}
@@ -272,6 +290,8 @@
   .fav.favon { color: var(--gold); }
   .controls { display: flex; flex-direction: column; gap: 10px; max-width: 260px; }
   .acterr { color: var(--red); margin: 10px 0 0; }
+  .removebtn { color: var(--red); border-color: rgba(255, 84, 112, 0.35); }
+  .removebtn:hover { border-color: var(--red); color: var(--red); }
   .priorbtn { color: var(--gold); border-color: rgba(255, 207, 110, 0.4); margin-top: 10px; animation: rise 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
   .eprior {
     color: var(--gold); border-color: rgba(255, 207, 110, 0.4);

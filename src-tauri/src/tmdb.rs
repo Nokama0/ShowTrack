@@ -52,6 +52,41 @@ pub struct ShowFull {
     pub episodes: Vec<EpisodeMeta>,
 }
 
+// TMDB sometimes files a title under the wrong type. Cross-filed entries keep
+// the other type's record but live in this app's other table, marked by a
+// NEGATIVE local id so they can never collide with native ids.
+impl ShowMeta {
+    pub fn from_movie(m: &MovieMeta) -> ShowMeta {
+        ShowMeta {
+            tmdb_id: -m.tmdb_id.abs(),
+            name: m.title.clone(),
+            year: m.year,
+            poster_path: m.poster_path.clone(),
+            backdrop_path: m.backdrop_path.clone(),
+            overview: m.overview.clone(),
+            status: None,
+            season_numbers: Vec::new(),
+            is_anime: false,
+        }
+    }
+}
+
+impl MovieMeta {
+    pub fn from_show(s: &ShowMeta) -> MovieMeta {
+        MovieMeta {
+            tmdb_id: -s.tmdb_id.abs(),
+            imdb_id: None,
+            title: s.name.clone(),
+            year: s.year,
+            release_date: None,
+            runtime: None,
+            poster_path: s.poster_path.clone(),
+            backdrop_path: s.backdrop_path.clone(),
+            overview: s.overview.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SearchResultItem {
     pub tmdb_id: i64,

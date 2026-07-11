@@ -204,3 +204,10 @@ export interface PairSummary {
   shows: number;
   movies: number;
 }
+
+export interface UpdateInfo {
+  version: string;
+  notes: string;
+  installerUrl: string | null;
+  pageUrl: string;
+}
