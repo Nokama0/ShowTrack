@@ -61,7 +61,7 @@ pub fn run() {
             {
                 updater::cleanup_old_exe(); // leftover from a portable self-update
                 let state = app.state::<AppState>();
-                let (enabled, port, maximize) = {
+                let (enabled, port, maximize, title) = {
                     let c = state.db.lock().unwrap();
                     let en = oplog::sync_get(&c, "sync_enabled").ok().flatten()
                         .is_some_and(|v| v == "1");
@@ -70,11 +70,16 @@ pub fn run() {
                     // maximized unless the user turned it off
                     let m = queries::setting(&c, "start_maximized").ok().flatten()
                         .map(|v| v != "0").unwrap_or(true);
-                    (en, p, m)
+                    let t = queries::setting(&c, "window_title").ok().flatten()
+                        .filter(|t| !t.trim().is_empty());
+                    (en, p, m, t)
                 };
-                if maximize {
-                    if let Some(w) = app.get_webview_window("main") {
+                if let Some(w) = app.get_webview_window("main") {
+                    if maximize {
                         let _ = w.maximize();
+                    }
+                    if let Some(t) = title {
+                        let _ = w.set_title(&t);
                     }
                 }
                 if enabled {
