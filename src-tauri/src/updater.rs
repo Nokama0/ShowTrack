@@ -22,6 +22,24 @@ pub struct UpdateInfo {
     pub notes: String,
     pub installer_url: Option<String>,
     pub page_url: String,
+    /// "setup" updates via the installer; "portable" replaces the running exe
+    pub kind: String,
+}
+
+/// An NSIS install leaves uninstall.exe beside the app. A bare exe run from
+/// anywhere else (including a dev target dir) updates by replacing itself.
+pub fn is_portable() -> bool {
+    #[cfg(target_os = "android")]
+    {
+        false
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| !d.join("uninstall.exe").exists()))
+            .unwrap_or(false)
+    }
 }
 
 /// "v1.2.3" or "1.2.3" into a comparable triple; anything else is None.
@@ -36,18 +54,20 @@ pub fn parse_version(v: &str) -> Option<(u64, u64, u64)> {
     Some((major, minor, patch))
 }
 
-/// Decide from a release JSON whether it is newer than `current`.
-pub fn parse_release(release: &Value, current: (u64, u64, u64)) -> Option<UpdateInfo> {
+/// Decide from a release JSON whether it is newer than `current`, picking the
+/// asset that matches how this copy runs.
+pub fn parse_release(release: &Value, current: (u64, u64, u64), portable: bool) -> Option<UpdateInfo> {
     let tag = release["tag_name"].as_str()?;
     let latest = parse_version(tag)?;
     if latest <= current {
         return None;
     }
+    let suffix = if portable { "-portable.exe" } else { "-setup.exe" };
     let installer_url = release["assets"]
         .as_array()
         .and_then(|assets| {
             assets.iter().find(|a| {
-                a["name"].as_str().is_some_and(|n| n.ends_with("-setup.exe"))
+                a["name"].as_str().is_some_and(|n| n.ends_with(suffix))
             })
         })
         .and_then(|a| a["browser_download_url"].as_str())
@@ -57,6 +77,7 @@ pub fn parse_release(release: &Value, current: (u64, u64, u64)) -> Option<Update
         notes: release["body"].as_str().unwrap_or("").chars().take(600).collect(),
         installer_url,
         page_url: release["html_url"].as_str().unwrap_or(RELEASES_PAGE).to_string(),
+        kind: (if portable { "portable" } else { "setup" }).to_string(),
     })
 }
 
@@ -84,10 +105,36 @@ pub async fn check(http: &reqwest::Client) -> Result<Option<UpdateInfo>> {
         .json()
         .await
         .map_err(|e| AppError::msg(e.to_string()))?;
-    Ok(parse_release(&release, current_version()))
+    Ok(parse_release(&release, current_version(), is_portable()))
 }
 
-/// Download the installer to the temp dir and return its path.
+/// Replace the running exe with `new_exe` and return the path to relaunch.
+/// A mapped image cannot be overwritten but CAN be renamed, so the running
+/// file steps aside as "<exe>.old" (cleaned up on a later launch).
+pub fn swap_running_exe(new_exe: &std::path::Path) -> Result<std::path::PathBuf> {
+    let cur = std::env::current_exe()
+        .map_err(|e| AppError::msg(format!("cannot locate the running exe: {e}")))?;
+    let old = std::path::PathBuf::from(format!("{}.old", cur.display()));
+    let _ = std::fs::remove_file(&old); // stale leftover from an earlier update
+    std::fs::rename(&cur, &old)
+        .map_err(|e| AppError::msg(format!("could not step the running exe aside: {e}")))?;
+    if let Err(e) = std::fs::copy(new_exe, &cur) {
+        let _ = std::fs::rename(&old, &cur); // roll back, app stays usable
+        return Err(AppError::msg(format!("could not place the new exe: {e}")));
+    }
+    Ok(cur)
+}
+
+/// Remove the "<exe>.old" a portable update leaves behind. The previous
+/// process may still be exiting on the first launch; that failure is fine,
+/// the next launch gets it.
+pub fn cleanup_old_exe() {
+    if let Ok(cur) = std::env::current_exe() {
+        let _ = std::fs::remove_file(std::path::PathBuf::from(format!("{}.old", cur.display())));
+    }
+}
+
+/// Download the update binary to the temp dir and return its path.
 pub async fn download_installer(http: &reqwest::Client, url: &str) -> Result<std::path::PathBuf> {
     let bytes = http
         .get(url)
@@ -101,7 +148,7 @@ pub async fn download_installer(http: &reqwest::Client, url: &str) -> Result<std
         .bytes()
         .await
         .map_err(|e| AppError::msg(e.to_string()))?;
-    let path = std::env::temp_dir().join("ShowTrack-update-setup.exe");
+    let path = std::env::temp_dir().join("ShowTrack-update.exe");
     tokio::fs::write(&path, &bytes).await?;
     Ok(path)
 }
@@ -133,19 +180,43 @@ mod tests {
                  "browser_download_url": "https://example.com/app.apk"}
             ]
         });
-        let up = parse_release(&rel, (0, 2, 0)).unwrap();
+        let up = parse_release(&rel, (0, 2, 0), false).unwrap();
         assert_eq!(up.version, "0.3.0");
+        assert_eq!(up.kind, "setup");
         assert_eq!(up.installer_url.as_deref(),
                    Some("https://example.com/ShowTrack_0.3.0_x64-setup.exe"));
         // same or older release is not an update
-        assert!(parse_release(&rel, (0, 3, 0)).is_none());
-        assert!(parse_release(&rel, (1, 0, 0)).is_none());
+        assert!(parse_release(&rel, (0, 3, 0), false).is_none());
+        assert!(parse_release(&rel, (1, 0, 0), false).is_none());
+    }
+
+    #[test]
+    fn portable_copy_gets_the_portable_asset() {
+        let rel = json!({
+            "tag_name": "v0.3.0",
+            "assets": [
+                {"name": "ShowTrack_0.3.0_x64-setup.exe",
+                 "browser_download_url": "https://example.com/setup.exe"},
+                {"name": "ShowTrack_0.3.0_x64-portable.exe",
+                 "browser_download_url": "https://example.com/portable.exe"}
+            ]
+        });
+        let up = parse_release(&rel, (0, 2, 0), true).unwrap();
+        assert_eq!(up.kind, "portable");
+        assert_eq!(up.installer_url.as_deref(), Some("https://example.com/portable.exe"));
+        // a release published without a portable asset falls back to the page link
+        let setup_only = json!({
+            "tag_name": "v0.3.0",
+            "assets": [{"name": "ShowTrack_0.3.0_x64-setup.exe",
+                        "browser_download_url": "https://example.com/setup.exe"}]
+        });
+        assert!(parse_release(&setup_only, (0, 2, 0), true).unwrap().installer_url.is_none());
     }
 
     #[test]
     fn release_without_installer_asset_still_reports() {
         let rel = json!({"tag_name": "v9.9.9", "assets": []});
-        let up = parse_release(&rel, (0, 1, 0)).unwrap();
+        let up = parse_release(&rel, (0, 1, 0), false).unwrap();
         assert!(up.installer_url.is_none());
         assert_eq!(up.page_url, RELEASES_PAGE);
     }

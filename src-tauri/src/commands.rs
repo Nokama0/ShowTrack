@@ -397,7 +397,13 @@ pub async fn update_install(app: AppHandle, state: State<'_, AppState>, url: Str
     {
         let path = crate::updater::download_installer(&state.http, &url).await
             .map_err(|e| e.to_string())?;
-        std::process::Command::new(&path).spawn().map_err(|e| e.to_string())?;
+        let launch = if crate::updater::is_portable() {
+            // no installer to run: the new exe takes this file's place
+            crate::updater::swap_running_exe(&path).map_err(|e| e.to_string())?
+        } else {
+            path
+        };
+        std::process::Command::new(&launch).spawn().map_err(|e| e.to_string())?;
         app.exit(0);
         Ok(())
     }
