@@ -10,6 +10,7 @@
   import { isAndroid } from "$lib/platform";
   import Onboarding from "$lib/ui/Onboarding.svelte";
   import NavIcon from "$lib/ui/NavIcon.svelte";
+  import DialogHost from "$lib/ui/DialogHost.svelte";
 
   let { children } = $props();
 
@@ -125,6 +126,7 @@
     {/if}
   </main>
 </div>
+<DialogHost />
 
 <style>
   .shell { display: flex; min-height: 100vh; }

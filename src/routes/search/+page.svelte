@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import { api } from "$lib/api";
   import { session } from "$lib/session.svelte";
+  import { askDialog } from "$lib/dialog.svelte";
   import type { SearchItem } from "$lib/types";
   import PosterImg from "$lib/ui/PosterImg.svelte";
 
@@ -55,6 +56,35 @@
       error = String(e);
     }
   }
+
+  const stateLabels: Record<string, string> = {
+    watching: "Watching", plan_to_watch: "Plan to watch",
+    watched: "Watched", watchlist: "Watchlist",
+  };
+  // the clicked state carried over to the other section keeps its intent:
+  // currently engaged stays engaged, saved for later stays saved for later
+  const crossState: Record<string, string> = {
+    watching: "watched", plan_to_watch: "watchlist",
+    watched: "watching", watchlist: "plan_to_watch",
+  };
+
+  async function requestAdd(item: SearchItem, target: "show" | "movie", myState: string) {
+    if (!session.askAddType || !session.features.movies) return add(item, target, myState);
+    const otherState = crossState[myState];
+    const showState = target === "show" ? myState : otherState;
+    const movieState = target === "movie" ? myState : otherState;
+    const pick = await askDialog({
+      title: `Add ${item.title}`,
+      message: `TMDB lists this as a ${item.mediaType === "tv" ? "show" : "movie"}. Where should it go?`,
+      buttons: [
+        { label: `As a show · ${stateLabels[showState]}`, value: "show", kind: "gold" },
+        { label: `As a movie · ${stateLabels[movieState]}`, value: "movie", kind: "gold" },
+        { label: "Cancel", value: "cancel", kind: "ghost" },
+      ],
+    });
+    if (pick !== "show" && pick !== "movie") return;
+    await add(item, pick, pick === "show" ? showState : movieState);
+  }
 </script>
 
 <div class="head"><h1>Search</h1></div>
@@ -70,29 +100,15 @@
       <span class="dim y">{r.mediaType === "tv" ? "Show" : "Movie"}{r.year ? ` · ${r.year}` : ""}</span>
       {#if r.inLibrary || addedIds.has(`${r.mediaType}-${r.tmdbId}`)}
         <span class="badge">✓ in library</span>
-      {:else if session.askAddType}
-        <!-- TMDB sometimes files a title under the wrong type; offer both homes -->
-        <div class="grp">
-          <span class="glabel dim">As show</span>
-          <button class="btn-mini gold" onclick={() => add(r, "show", "watching")}>Watching</button>
-          <button class="btn-mini" onclick={() => add(r, "show", "plan_to_watch")}>Plan</button>
-        </div>
-        {#if session.features.movies}
-          <div class="grp">
-            <span class="glabel dim">As movie</span>
-            <button class="btn-mini gold" onclick={() => add(r, "movie", "watched")}>Watched</button>
-            <button class="btn-mini" onclick={() => add(r, "movie", "watchlist")}>Watchlist</button>
-          </div>
-        {/if}
       {:else if r.mediaType === "tv"}
         <div class="row">
-          <button class="btn-mini gold" onclick={() => add(r, "show", "watching")}>Watching</button>
-          <button class="btn-mini" onclick={() => add(r, "show", "plan_to_watch")}>Plan</button>
+          <button class="btn-mini gold" onclick={() => requestAdd(r, "show", "watching")}>Watching</button>
+          <button class="btn-mini" onclick={() => requestAdd(r, "show", "plan_to_watch")}>Plan</button>
         </div>
       {:else}
         <div class="row">
-          <button class="btn-mini gold" onclick={() => add(r, "movie", "watched")}>Watched</button>
-          <button class="btn-mini" onclick={() => add(r, "movie", "watchlist")}>Watchlist</button>
+          <button class="btn-mini gold" onclick={() => requestAdd(r, "movie", "watched")}>Watched</button>
+          <button class="btn-mini" onclick={() => requestAdd(r, "movie", "watchlist")}>Watchlist</button>
         </div>
       {/if}
     </div>
@@ -117,6 +133,4 @@
   @media (max-width: 760px) {
     .big { max-width: none; font-size: 15px; }
   }
-  .grp { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-  .glabel { font-size: 11px; min-width: 58px; }
 </style>
