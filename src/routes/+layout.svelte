@@ -114,7 +114,12 @@
 </script>
 
 <div class="shell">
-  <nav class="dock" aria-label="Sections">
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <nav
+    class="dock"
+    aria-label="Sections"
+    ondragover={(e) => { if (session.navReorder && dragIdx !== null) e.preventDefault(); }}
+  >
     <div class="mark"><img src="/appicon.png" alt="ShowTrack" /></div>
     {#each links as l, i (l.href)}
       {#if session.navSeparators && i > 0}<span class="navsep"></span>{/if}
@@ -125,8 +130,18 @@
         class:dragging={dragIdx === i}
         class:dropmark={overIdx === i && dragIdx !== null && dragIdx !== i}
         draggable={session.navReorder}
-        ondragstart={(e) => { dragIdx = i; e.dataTransfer?.setData("text/plain", l.href); }}
-        ondragover={(e) => { if (session.navReorder) { e.preventDefault(); overIdx = i; } }}
+        ondragstart={(e) => {
+          dragIdx = i;
+          e.dataTransfer?.setData("text/plain", l.href);
+          if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+        }}
+        ondragover={(e) => {
+          if (session.navReorder) {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+            overIdx = i;
+          }
+        }}
         ondragleave={() => { if (overIdx === i) overIdx = null; }}
         ondrop={(e) => { e.preventDefault(); dropOn(i); }}
         ondragend={() => { dragIdx = null; overIdx = null; }}
