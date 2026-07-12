@@ -743,7 +743,9 @@
   .sblock:nth-child(5) { animation-delay: 240ms; }
   .sblock h2 { margin: 0 0 14px; }
   /* tall enough that the spy can reach the last section at any zoom */
-  .sblock:last-child { min-height: calc(100vh - 200px); }
+  @media (min-width: 1281px) {
+    .sblock:last-child { min-height: calc(100vh - 200px); }
+  }
 
   .section { display: flex; flex-direction: column; gap: 10px; }
   .ph { margin: 0; }

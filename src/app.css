@@ -24,6 +24,10 @@ html { overflow-x: clip; scrollbar-gutter: stable; }
 /* custom scrollbar in place of the Windows default: slim, dark, on-theme.
    desktop only; styling it on Android would turn the overlay bar into a
    space-taking classic one */
+@media (hover: none), (pointer: coarse) {
+  * { scrollbar-width: none; }
+  ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+}
 @media (hover: hover) and (pointer: fine) {
   ::-webkit-scrollbar { width: 12px; height: 12px; }
   ::-webkit-scrollbar-track { background: transparent; }
