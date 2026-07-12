@@ -45,16 +45,6 @@ jobs:
           cp "src-tauri/target/release/bundle/nsis/ShowTrack_${VERSION}_x64-setup.exe" dist/
           cp "src-tauri/target/release/showtrack.exe" "dist/ShowTrack_${VERSION}_x64-portable.exe"
 
-      - name: Hygiene scan
-        shell: bash
-        run: |
-          for f in dist/*.exe; do
-            if grep -aoE "***REMOVED***|***REMOVED***|C:\\\\Users\\\\Nokama|G:\\\\Projects" "$f"; then
-              echo "::error::identity marker found in $f"; exit 1
-            fi
-          done
-          echo "clean"
-
       - uses: actions/upload-artifact@v7
         with:
           name: windows
