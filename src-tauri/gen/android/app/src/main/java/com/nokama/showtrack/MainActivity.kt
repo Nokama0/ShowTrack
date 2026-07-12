@@ -1,6 +1,7 @@
 package com.nokama.showtrack
 
 import android.os.Bundle
+import android.webkit.WebView
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -18,5 +19,12 @@ class MainActivity : TauriActivity() {
       v.setPadding(bars.left, bars.top, bars.right, 0)
       insets
     }
+  }
+
+  // The WebView's native view-level scrollbar is drawn above the fixed tab bar
+  // and CSS cannot reach it; disable it so only the (hidden) web scrollbars remain.
+  override fun onWebViewCreate(webView: WebView) {
+    webView.isVerticalScrollBarEnabled = false
+    webView.isHorizontalScrollBarEnabled = false
   }
 }
