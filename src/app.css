@@ -108,6 +108,10 @@ input[type="checkbox"]:checked {
   animation: pop 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 input[type="checkbox"]:checked::before { transform: scale(1); }
+/* future/unaired episodes: cannot be marked until they air */
+input[type="checkbox"]:disabled {
+  opacity: 0.4; cursor: not-allowed; border-style: dashed;
+}
 /* the check itself is the state indicator; a ring around it reads as an error glow */
 input[type="checkbox"]:focus-visible { outline: none; }
 button:disabled { opacity: 0.5; cursor: default; filter: none; }
