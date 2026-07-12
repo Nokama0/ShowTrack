@@ -70,6 +70,7 @@ export interface MovieRow {
   watchedAt: string | null;
   rewatchCount: number;
   isFavorite: boolean;
+  isAnime: boolean;
 }
 
 export interface UpcomingItem {

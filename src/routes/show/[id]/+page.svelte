@@ -149,7 +149,9 @@
     if (!ok) return;
     try {
       await api.showRemove(id);
-      goto("/", { replaceState: true });
+      // land back wherever the user came from (Anime, Search, Shows...)
+      if (history.length > 1) history.back();
+      else goto("/", { replaceState: true });
     } catch (e) {
       actionError = String(e);
     }

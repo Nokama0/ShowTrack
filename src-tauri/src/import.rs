@@ -112,7 +112,7 @@ async fn import_one_movie<T: Tmdb + ?Sized>(
         if !existed {
             queries::set_movie_user(conn, meta.tmdb_id, state, watched_at.as_deref(),
                                     rewatch, favorite, Some(tvdb_id), Some(&uuid))?;
-            crate::oplog::log_movie_add(conn, meta.tmdb_id, state, watched_at.as_deref(), "movie", &now)?;
+            crate::oplog::log_movie_add(conn, meta.tmdb_id, state, watched_at.as_deref(), "movie", false, &now)?;
         }
         Ok(())
     })

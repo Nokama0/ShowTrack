@@ -78,7 +78,9 @@
       if (pick !== "show" && pick !== "anime" && pick !== "movie") return;
       target = pick;
     }
-    const stateButtons: DialogButton[] = target === "movie"
+    // a movie stays a movie even when filed with the anime
+    const movieLike = target === "movie" || (target === "anime" && !isTv);
+    const stateButtons: DialogButton[] = movieLike
       ? [
           { label: "Watched", value: "watched", kind: "gold" },
           { label: "Will watch", value: "watchlist", kind: "gold" },

@@ -378,7 +378,7 @@ pub fn toggle_movie_favorite(conn: &Connection, id: i64) -> Result<bool> {
 pub fn list_movies(conn: &Connection) -> Result<Vec<MovieRow>> {
     let mut st = conn.prepare(
         "SELECT tmdb_id, imdb_id, title, year, release_date, runtime, poster_path,
-                backdrop_path, overview, my_state, watched_at, rewatch_count, is_favorite
+                backdrop_path, overview, my_state, watched_at, rewatch_count, is_favorite, is_anime
          FROM movies ORDER BY title")?;
     let rows = st.query_map([], |r| {
         Ok(MovieRow {
@@ -387,6 +387,7 @@ pub fn list_movies(conn: &Connection) -> Result<Vec<MovieRow>> {
             backdrop_path: r.get(7)?, overview: r.get(8)?, my_state: r.get(9)?,
             watched_at: r.get(10)?, rewatch_count: r.get(11)?,
             is_favorite: r.get::<_, i64>(12)? != 0,
+            is_anime: r.get::<_, i64>(13)? != 0,
         })
     })?;
     Ok(rows.collect::<std::result::Result<_, _>>()?)
