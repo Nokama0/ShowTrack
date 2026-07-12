@@ -23,7 +23,7 @@ export const session = $state({
   navOrder: ["/", "/anime", "/airing", "/movies", "/search"] as string[],
   keepSearch: false,
   searchQuery: "", // runtime only: the preserved Search text while keepSearch is on
-  tiles: { shows: 184, anime: 184, movies: 172 } as Record<"shows" | "anime" | "movies", number>,
+  tiles: { shows: 180, anime: 180, movies: 170 } as Record<"shows" | "anime" | "movies", number>,
   tabs: {
     shows: "watching",
     anime: "watching",
@@ -55,9 +55,9 @@ export async function loadSession() {
       return Number.isFinite(v) ? Math.min(260, Math.max(120, v)) : dflt;
     };
     session.tiles = {
-      shows: tile("tile_shows", 184),
-      anime: tile("tile_anime", 184),
-      movies: tile("tile_movies", 172),
+      shows: tile("tile_shows", 180),
+      anime: tile("tile_anime", 180),
+      movies: tile("tile_movies", 170),
     };
     session.navSeparators = s["nav_separators"] === "1";
     const canonicalNav = ["/", "/anime", "/airing", "/movies", "/search"];
