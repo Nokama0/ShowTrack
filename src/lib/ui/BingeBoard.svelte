@@ -11,7 +11,16 @@
   let cards = $state<BingeCard[]>([]);
   let loaded = $state(false);
   let loadError = $state("");
-  let filter = $state<"watching" | "plan_to_watch" | "stopped" | "all">("watching");
+  const tabKey = $derived(animeOnly ? "anime" : "shows");
+  type Filter = "watching" | "plan_to_watch" | "stopped" | "all";
+  // svelte-ignore state_referenced_locally -- the remembered tab seeds the initial value only
+  let filter = $state<Filter>(session.tabs[animeOnly ? "anime" : "shows"] as Filter);
+
+  function setFilter(value: Filter) {
+    filter = value;
+    session.tabs[tabKey] = value;
+    api.settingsSet(`tab_${tabKey}`, value).catch(() => {}); // cosmetic preference, losing it is fine
+  }
   // showId -> season marked this session (undo affordance until the next refetch)
   let marked = $state<Map<number, { season: number; ids: number[]; priorDone: boolean }>>(new Map());
 
@@ -176,7 +185,7 @@
 
 <div class="chips" style="margin-bottom:30px">
   {#each chips as [value, label] (value)}
-    <button class="chip" class:on={filter === value} onclick={() => (filter = value)}>{label}</button>
+    <button class="chip" class:on={filter === value} onclick={() => setFilter(value)}>{label}</button>
   {/each}
 </div>
 

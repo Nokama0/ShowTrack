@@ -275,14 +275,15 @@ pub async fn search_tmdb(state: State<'_, AppState>, query: String) -> CmdResult
     let (show_ids, movie_ids) = with_db(&state.db, |c| queries::library_ids(c)).await
         .map_err(|e| e.to_string())?;
     Ok(results.into_iter().map(|r| {
-        let in_library = match r.media_type.as_str() {
+        let lib_state = match r.media_type.as_str() {
             // cross-filed entries live in the other table under a negative id
-            "tv" => show_ids.contains(&r.tmdb_id) || movie_ids.contains(&-r.tmdb_id),
-            _ => movie_ids.contains(&r.tmdb_id) || show_ids.contains(&-r.tmdb_id),
-        };
+            "tv" => show_ids.get(&r.tmdb_id).or_else(|| movie_ids.get(&-r.tmdb_id)),
+            _ => movie_ids.get(&r.tmdb_id).or_else(|| show_ids.get(&-r.tmdb_id)),
+        }.cloned();
         SearchItem {
             tmdb_id: r.tmdb_id, media_type: r.media_type, title: r.title,
-            year: r.year, poster_path: r.poster_path, overview: r.overview, in_library,
+            year: r.year, poster_path: r.poster_path, overview: r.overview,
+            in_library: lib_state.is_some(), lib_state,
         }
     }).collect())
 }

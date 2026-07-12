@@ -404,16 +404,21 @@ pub fn shows_to_refresh(conn: &Connection) -> Result<Vec<i64>> {
     Ok(rows.collect::<std::result::Result<_, _>>()?)
 }
 
-pub fn library_ids(conn: &Connection) -> Result<(HashSet<i64>, HashSet<i64>)> {
-    let mut shows = HashSet::new();
-    let mut st = conn.prepare("SELECT tmdb_id FROM shows")?;
-    for id in st.query_map([], |r| r.get::<_, i64>(0))? {
-        shows.insert(id?);
+pub type LibraryStates = (HashMap<i64, String>, HashMap<i64, String>);
+
+/// Every library id with its user state, shows then movies.
+pub fn library_ids(conn: &Connection) -> Result<LibraryStates> {
+    let mut shows = HashMap::new();
+    let mut st = conn.prepare("SELECT tmdb_id, my_state FROM shows")?;
+    for row in st.query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))? {
+        let (id, state) = row?;
+        shows.insert(id, state);
     }
-    let mut movies = HashSet::new();
-    let mut st = conn.prepare("SELECT tmdb_id FROM movies")?;
-    for id in st.query_map([], |r| r.get::<_, i64>(0))? {
-        movies.insert(id?);
+    let mut movies = HashMap::new();
+    let mut st = conn.prepare("SELECT tmdb_id, my_state FROM movies")?;
+    for row in st.query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))? {
+        let (id, state) = row?;
+        movies.insert(id, state);
     }
     Ok((shows, movies))
 }
@@ -716,7 +721,7 @@ mod tests {
 
         upsert_movie_meta(&conn, &movie_meta(50, "Film"), NOW).unwrap();
         let (sids, mids) = library_ids(&conn).unwrap();
-        assert!(sids.contains(&1) && sids.contains(&2) && sids.contains(&3));
-        assert!(mids.contains(&50));
+        assert!(sids.contains_key(&1) && sids.contains_key(&2) && sids.contains_key(&3));
+        assert_eq!(mids.get(&50).map(String::as_str), Some("watchlist"));
     }
 }

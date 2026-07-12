@@ -111,6 +111,8 @@ pub struct SearchItem {
     pub poster_path: Option<String>,
     pub overview: Option<String>,
     pub in_library: bool,
+    /// the my_state of the matching library row, for the search badge
+    pub lib_state: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

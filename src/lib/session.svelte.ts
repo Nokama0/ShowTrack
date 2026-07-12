@@ -17,6 +17,11 @@ export const session = $state({
   zoom: 100,
   askAddType: false,
   allFirst: false,
+  tabs: {
+    shows: "watching",
+    anime: "watching",
+    movies: "watched",
+  } as Record<"shows" | "anime" | "movies", string>,
   features: {
     movies: true,
     animePage: true,
@@ -35,6 +40,13 @@ export async function loadSession() {
     session.zoom = Number.isFinite(z) ? Math.min(150, Math.max(80, z)) : 100;
     session.askAddType = s["search_ask_type"] === "1";
     session.allFirst = s["all_first"] === "1";
+    const pick = (key: string, allowed: string[], dflt: string) =>
+      allowed.includes(s[key]) ? s[key] : dflt;
+    session.tabs = {
+      shows: pick("tab_shows", ["watching", "plan_to_watch", "stopped", "all"], "watching"),
+      anime: pick("tab_anime", ["watching", "plan_to_watch", "stopped", "all"], "watching"),
+      movies: pick("tab_movies", ["watched", "watchlist", "all"], "watched"),
+    };
     const on = (key: string) => s[key] !== "0"; // everything defaults to on
     session.features = {
       movies: on("feat_movies"),

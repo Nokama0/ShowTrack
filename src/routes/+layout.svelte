@@ -92,7 +92,7 @@
 
 <div class="shell">
   <nav class="dock" aria-label="Sections">
-    <div class="mark">S</div>
+    <div class="mark"><img src="/appicon.png" alt="ShowTrack" /></div>
     {#each links as l (l.href)}
       <a href={l.href} class:on={page.url.pathname === l.href}>
         <span class="ico"><NavIcon name={l.icon} size={19} /></span>{l.label}
@@ -137,11 +137,9 @@
   }
   .mark {
     width: 44px; height: 44px; border-radius: 13px; margin-bottom: 18px;
-    background: linear-gradient(140deg, #2a3550, #101623);
-    border: 1px solid var(--line);
-    display: flex; align-items: center; justify-content: center;
-    font-family: "Anton", sans-serif; font-size: 19px; color: var(--gold);
+    border: 1px solid var(--line); overflow: hidden;
   }
+  .mark img { width: 100%; height: 100%; display: block; }
   .dock a {
     width: 60px; padding: 9px 0 7px; border-radius: 12px; text-align: center;
     color: var(--dim); font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
