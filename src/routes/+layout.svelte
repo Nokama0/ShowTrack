@@ -78,6 +78,7 @@
   }
 
   function tabPointerDown(e: PointerEvent, i: number) {
+    suppressTap = false; // a fresh press always starts clean, even if a prior drag left no trailing click
     if (!session.navReorder || i >= links.length) return;
     tDrag = i;
     tOver = null;
