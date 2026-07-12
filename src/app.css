@@ -182,8 +182,8 @@ input:not([type="checkbox"]):focus, select:focus {
   .rail { position: static; }
 }
 
-.grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--tile, 180px), calc(var(--tile, 180px) * 1.18))); gap: 24px; }
-.grid-posters { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--tile, 170px), calc(var(--tile, 170px) * 1.24))); gap: 20px; }
+.grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--tile, 180px), 1fr)); gap: 24px; }
+.grid-posters { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--tile, 170px), 1fr)); gap: 20px; }
 
 .banner {
   background: #2b2410; border: 1px solid #6b5a1e; color: var(--gold);
