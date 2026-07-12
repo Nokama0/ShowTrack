@@ -391,6 +391,44 @@ pub async fn title_add(state: State<'_, AppState>, tmdb_id: i64, src: String,
     }
 }
 
+#[tauri::command]
+pub async fn title_preview(state: State<'_, AppState>, tmdb_id: i64, media_type: String) -> CmdResult<TitlePreview> {
+    let tmdb = client(&state).await?;
+    if media_type == "tv" {
+        let full = tmdb.show_with_episodes(tmdb_id).await.map_err(|e| e.to_string())?;
+        let mut acc: Vec<(i64, i64, Option<chrono::NaiveDate>, Option<chrono::NaiveDate>)> = Vec::new();
+        for ep in &full.episodes {
+            match acc.iter_mut().find(|s| s.0 == ep.season_number) {
+                Some(s) => {
+                    s.1 += 1;
+                    if let Some(d) = ep.air_date {
+                        if s.2.is_none_or(|f| d < f) { s.2 = Some(d); }
+                        if s.3.is_none_or(|l| d > l) { s.3 = Some(d); }
+                    }
+                }
+                None => acc.push((ep.season_number, 1, ep.air_date, ep.air_date)),
+            }
+        }
+        acc.sort_by_key(|s| s.0);
+        let seasons = acc.into_iter().map(|(n, count, first, last)| PreviewSeason {
+            season_number: n, episode_count: count,
+            first_air: first.map(|d| d.to_string()), last_air: last.map(|d| d.to_string()),
+        }).collect();
+        Ok(TitlePreview {
+            media_type, title: full.meta.name, year: full.meta.year,
+            poster_path: full.meta.poster_path, overview: full.meta.overview,
+            runtime: None, status: full.meta.status, seasons,
+        })
+    } else {
+        let m = tmdb.movie(tmdb_id).await.map_err(|e| e.to_string())?;
+        Ok(TitlePreview {
+            media_type, title: m.title, year: m.year,
+            poster_path: m.poster_path, overview: m.overview,
+            runtime: m.runtime, status: None, seasons: Vec::new(),
+        })
+    }
+}
+
 // ---------- updater ----------
 
 #[tauri::command]

@@ -128,6 +128,7 @@ pub fn run() {
             commands::show_remove,
             commands::movie_remove,
             commands::title_add,
+            commands::title_preview,
             commands::update_check,
             commands::update_install,
             commands::movie_toggle_favorite,

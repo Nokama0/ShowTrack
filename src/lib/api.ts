@@ -1,7 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AiringRow, BingeCard, CacheInfo, ImportReport, MovieRow, PairSummary, RefreshSummary,
-  SearchItem, ShowCard, ShowDetail, SyncServerStatus, SyncStatus, SyncSummary, UpcomingItem, UpdateInfo,
+  SearchItem, ShowCard, ShowDetail, SyncServerStatus, SyncStatus, SyncSummary, TitlePreview,
+  UpcomingItem, UpdateInfo,
 } from "./types";
 import { isAndroid } from "./platform";
 
@@ -35,6 +36,8 @@ export const api = {
   movieRemove: (id: number) => invoke<void>("movie_remove", { id }),
   titleAdd: (tmdbId: number, src: string, target: string, myState: string) =>
     invoke<void>("title_add", { tmdbId, src, target, myState }),
+  titlePreview: (tmdbId: number, mediaType: string) =>
+    invoke<TitlePreview>("title_preview", { tmdbId, mediaType }),
   updateCheck: () => invoke<UpdateInfo | null>("update_check"),
   updateInstall: (url: string) => invoke<void>("update_install", { url }),
   movieToggleFavorite: (id: number) => invoke<boolean>("movie_toggle_favorite", { id }),

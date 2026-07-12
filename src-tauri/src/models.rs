@@ -102,6 +102,28 @@ pub struct UpcomingItem {
     pub air_date: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewSeason {
+    pub season_number: i64,
+    pub episode_count: i64,
+    pub first_air: Option<String>,
+    pub last_air: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TitlePreview {
+    pub media_type: String, // "tv" | "movie"
+    pub title: String,
+    pub year: Option<i64>,
+    pub poster_path: Option<String>,
+    pub overview: Option<String>,
+    pub runtime: Option<i64>,   // movies
+    pub status: Option<String>, // shows
+    pub seasons: Vec<PreviewSeason>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchItem {
