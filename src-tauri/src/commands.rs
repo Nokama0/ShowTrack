@@ -312,7 +312,7 @@ pub async fn movie_add(state: State<'_, AppState>, tmdb_id: i64, my_state: Strin
         queries::upsert_movie_meta(c, &meta, &now)?;
         let watched_at = (my_state == "watched").then(|| now.clone());
         queries::set_movie_user(c, meta.tmdb_id, &my_state, watched_at.as_deref(), 0, false, None, None)?;
-        oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), "movie", &now)?;
+        oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), "movie", false, &now)?;
         Ok(())
     })
     .await
@@ -328,8 +328,11 @@ pub async fn movie_add(state: State<'_, AppState>, tmdb_id: i64, my_state: Strin
 pub async fn title_add(state: State<'_, AppState>, tmdb_id: i64, src: String,
                        target: String, my_state: String) -> CmdResult<()> {
     let tmdb = client(&state).await?;
-    match target.as_str() {
-        "movie" => {
+    // a movie-typed title sent to the anime section stays a movie: it keeps
+    // movie semantics and the anime flag files it with the anime
+    let movie_as_anime = target == "anime" && src == "movie";
+    match (target.as_str(), movie_as_anime) {
+        ("movie", _) | (_, true) => {
             let (meta, op_src) = if src == "tv" {
                 let show = tmdb.tv_base(tmdb_id).await.map_err(|e| e.to_string())?;
                 (crate::tmdb::MovieMeta::from_show(&show), "tv")
@@ -339,14 +342,18 @@ pub async fn title_add(state: State<'_, AppState>, tmdb_id: i64, src: String,
             with_db(&state.db, move |c| {
                 let now = now_rfc3339();
                 queries::upsert_movie_meta(c, &meta, &now)?;
+                if movie_as_anime {
+                    c.execute("UPDATE movies SET is_anime=1 WHERE tmdb_id=?1", [meta.tmdb_id])?;
+                }
                 let watched_at = (my_state == "watched").then(|| now.clone());
                 queries::set_movie_user(c, meta.tmdb_id, &my_state, watched_at.as_deref(), 0, false, None, None)?;
-                oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), op_src, &now)
+                oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), op_src,
+                                     movie_as_anime, &now)
             })
             .await
             .map_err(|e| e.to_string())
         }
-        "show" | "anime" => {
+        ("show", _) | ("anime", _) => {
             let as_anime = target == "anime";
             let (full, op_src) = if src == "tv" {
                 (tmdb.show_with_episodes(tmdb_id).await.map_err(|e| e.to_string())?, "tv")
@@ -380,7 +387,7 @@ pub async fn title_add(state: State<'_, AppState>, tmdb_id: i64, src: String,
             .await
             .map_err(|e| e.to_string())
         }
-        _ => Err("unknown add target".into()),
+        (_, _) => Err("unknown add target".into()),
     }
 }
 

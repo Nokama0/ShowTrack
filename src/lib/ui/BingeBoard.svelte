@@ -91,12 +91,12 @@
   const readyCount = $derived(readyPool.filter((c) => c.ready!.kind !== "start").length);
   const startCount = $derived(readyPool.filter((c) => c.ready!.kind === "start").length);
 
-  const baseChips = [
+  const baseChips = $derived([
     ["watching", "Watching"],
     ["plan_to_watch", "Plan to watch"],
     ["stopped", "Stopped"],
-    ["all", "All shows"],
-  ] as const;
+    ["all", animeOnly ? "All anime" : "All shows"],
+  ] as const);
   const chips = $derived(
     session.allFirst ? [baseChips[3], baseChips[0], baseChips[1], baseChips[2]] : [...baseChips],
   );
@@ -174,7 +174,7 @@
   {#if animeOnly}
     <h1>Anime</h1>
   {:else}
-    <h1>Ready to <span>watch</span></h1>
+    <h1>Shows</h1>
   {/if}
   <div class="stats">
     <div class="stat g"><b>{readyCount}</b><span>seasons ready</span></div>

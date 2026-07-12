@@ -101,14 +101,14 @@ pub fn seed_from_library(conn: &Connection) -> Result<usize> {
                Some(serde_json::json!({"watched_at": at, "show": show})), &ts)?;
         n += 1;
     }
-    let movies: Vec<(i64, String, Option<String>, i64, i64, String)> = conn.prepare(
-        "SELECT tmdb_id, my_state, watched_at, rewatch_count, is_favorite, added_at FROM movies")?
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)))?
+    let movies: Vec<(i64, String, Option<String>, i64, i64, String, i64)> = conn.prepare(
+        "SELECT tmdb_id, my_state, watched_at, rewatch_count, is_favorite, added_at, is_anime FROM movies")?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)))?
         .collect::<std::result::Result<_, _>>()?;
-    for (id, state, at, rew, fav, added) in movies {
+    for (id, state, at, rew, fav, added, anime) in movies {
         let src = if id < 0 { "tv" } else { "movie" };
         append(conn, "movie", id, "add",
-               Some(serde_json::json!({"state": state, "watched_at": at, "src": src})), &added)?;
+               Some(serde_json::json!({"state": state, "watched_at": at, "src": src, "anime": anime != 0})), &added)?;
         n += 1;
         if fav != 0 {
             append(conn, "movie", id, "favorite", Some(serde_json::json!({"value": true})), &added)?;
@@ -265,9 +265,9 @@ pub fn movie_toggle_favorite(conn: &Connection, id: i64, now: &str) -> Result<bo
 }
 
 pub fn log_movie_add(conn: &Connection, id: i64, state: &str,
-                     watched_at: Option<&str>, src: &str, now: &str) -> Result<()> {
+                     watched_at: Option<&str>, src: &str, anime: bool, now: &str) -> Result<()> {
     append(conn, "movie", id, "add",
-           Some(json!({"state": state, "watched_at": watched_at, "src": src})), now)
+           Some(json!({"state": state, "watched_at": watched_at, "src": src, "anime": anime})), now)
 }
 
 /// Import watches have NULL watched_at by design; the op ts is the import time.
@@ -534,10 +534,14 @@ pub async fn apply_ops<T: crate::tmdb::Tmdb + ?Sized>(
                 };
                 let state = pstr(&op, "state").unwrap_or_else(|| "watchlist".into());
                 let at = pstr(&op, "watched_at");
+                let anime = op.payload.as_ref().and_then(|p| p["anime"].as_bool()).unwrap_or(false);
                 let ts = op.ts.clone();
                 if let Err(e) = with_db(db, move |c| {
                     let existed = crate::queries::movie_exists(c, meta.tmdb_id)?;
                     crate::queries::upsert_movie_meta(c, &meta, &ts)?;
+                    if anime {
+                        c.execute("UPDATE movies SET is_anime=1 WHERE tmdb_id=?1", [meta.tmdb_id])?;
+                    }
                     if !existed {
                         crate::queries::set_movie_user(c, meta.tmdb_id, &state,
                             at.as_deref(), 0, false, None, None)?;
@@ -785,7 +789,7 @@ mod tests {
             let c = b.lock().unwrap();
             conn_exec(&c, "INSERT INTO movies(tmdb_id,title,my_state,added_at)
                            VALUES(50,'M','watchlist','2026-06-01T00:00:00Z')");
-            log_movie_add(&c, 50, "watchlist", None, "movie", "2026-07-01T00:00:00Z").unwrap();
+            log_movie_add(&c, 50, "watchlist", None, "movie", false, "2026-07-01T00:00:00Z").unwrap();
             movie_toggle_favorite(&c, 50, "2026-07-01T01:00:00Z").unwrap();
         }
         let ops_a = { let c = a.lock().unwrap(); ops_since(&c, 0).unwrap() };

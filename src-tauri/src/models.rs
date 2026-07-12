@@ -86,6 +86,7 @@ pub struct MovieRow {
     pub watched_at: Option<String>,
     pub rewatch_count: i64,
     pub is_favorite: bool,
+    pub is_anime: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

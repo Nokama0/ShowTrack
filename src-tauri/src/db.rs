@@ -113,6 +113,11 @@ fn init(conn: &Connection) -> Result<()> {
         conn.execute_batch("ALTER TABLE shows ADD COLUMN is_anime INTEGER NOT NULL DEFAULT 0;")?;
         conn.pragma_update(None, "user_version", 3)?;
     }
+    if v < 4 {
+        // anime movies: user-chosen section, never auto-detected
+        conn.execute_batch("ALTER TABLE movies ADD COLUMN is_anime INTEGER NOT NULL DEFAULT 0;")?;
+        conn.pragma_update(None, "user_version", 4)?;
+    }
     Ok(())
 }
 
@@ -140,7 +145,7 @@ mod tests {
     fn migrates_to_v2_with_oplog_and_device_id() {
         let conn = open_memory().unwrap();
         let v: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-        assert_eq!(v, 3); // cascades through v3 (is_anime column) in one pass
+        assert_eq!(v, 4); // cascades through v4 (movie is_anime) in one pass
         let n: i64 = conn.query_row(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('oplog','sync_state')",
             [], |r| r.get(0)).unwrap();

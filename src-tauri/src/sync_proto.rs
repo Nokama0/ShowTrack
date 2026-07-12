@@ -53,6 +53,8 @@ pub struct SnapMovie {
     pub poster_path: Option<String>, pub backdrop_path: Option<String>,
     pub overview: Option<String>, pub my_state: String, pub watched_at: Option<String>,
     pub rewatch_count: i64, pub is_favorite: i64, pub added_at: String,
+    #[serde(default)] // absent in pre-anime-movies backups
+    pub is_anime: i64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -93,13 +95,13 @@ pub fn build_snapshot(conn: &Connection) -> Result<Snapshot> {
     let movies = conn.prepare(
         "SELECT tmdb_id,tvdb_id,imdb_id,tvtime_uuid,title,year,release_date,runtime,
                 poster_path,backdrop_path,overview,my_state,watched_at,rewatch_count,
-                is_favorite,added_at FROM movies")?
+                is_favorite,added_at,is_anime FROM movies")?
         .query_map([], |r| Ok(SnapMovie {
             tmdb_id: r.get(0)?, tvdb_id: r.get(1)?, imdb_id: r.get(2)?, tvtime_uuid: r.get(3)?,
             title: r.get(4)?, year: r.get(5)?, release_date: r.get(6)?, runtime: r.get(7)?,
             poster_path: r.get(8)?, backdrop_path: r.get(9)?, overview: r.get(10)?,
             my_state: r.get(11)?, watched_at: r.get(12)?, rewatch_count: r.get(13)?,
-            is_favorite: r.get(14)?, added_at: r.get(15)?,
+            is_favorite: r.get(14)?, added_at: r.get(15)?, is_anime: r.get(16)?,
         }))?.collect::<std::result::Result<_, _>>()?;
     Ok(Snapshot {
         device_id: oplog::sync_get(conn, "device_id")?.unwrap_or_default(),
@@ -155,17 +157,18 @@ pub fn apply_library(conn: &Connection, snap: &Snapshot) -> Result<(usize, usize
         tx.execute(
             "INSERT INTO movies(tmdb_id,tvdb_id,imdb_id,tvtime_uuid,title,year,release_date,
                                 runtime,poster_path,backdrop_path,overview,my_state,watched_at,
-                                rewatch_count,is_favorite,added_at)
-             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)
+                                rewatch_count,is_favorite,added_at,is_anime)
+             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17)
              ON CONFLICT(tmdb_id) DO UPDATE SET
                tvdb_id=COALESCE(excluded.tvdb_id,tvdb_id), imdb_id=COALESCE(excluded.imdb_id,imdb_id),
                tvtime_uuid=COALESCE(excluded.tvtime_uuid,tvtime_uuid), title=excluded.title,
                year=excluded.year, release_date=excluded.release_date, runtime=excluded.runtime,
                poster_path=excluded.poster_path, backdrop_path=excluded.backdrop_path,
-               overview=excluded.overview",
+               overview=excluded.overview, is_anime=MAX(is_anime, excluded.is_anime)",
             params![m.tmdb_id, m.tvdb_id, m.imdb_id, m.tvtime_uuid, m.title, m.year,
                     m.release_date, m.runtime, m.poster_path, m.backdrop_path, m.overview,
-                    m.my_state, m.watched_at, m.rewatch_count, m.is_favorite, m.added_at])?;
+                    m.my_state, m.watched_at, m.rewatch_count, m.is_favorite, m.added_at,
+                    m.is_anime])?;
         if !existed { new_movies += 1; }
     }
     if crate::queries::setting(&tx, "tmdb_key")?.is_none() {
