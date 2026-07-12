@@ -5,6 +5,7 @@
   import { askDialog, type DialogButton } from "$lib/dialog.svelte";
   import type { SearchItem } from "$lib/types";
   import PosterImg from "$lib/ui/PosterImg.svelte";
+  import TitlePreview from "$lib/ui/TitlePreview.svelte";
 
   $effect(() => {
     if (!session.features.searchPage) goto("/", { replaceState: true });
@@ -57,6 +58,8 @@
     }
   }
 
+  let preview = $state<SearchItem | null>(null);
+
   const stateLabels: Record<string, string> = {
     watching: "Watching", plan_to_watch: "Plan to watch", stopped: "Stopped",
     watched: "Watched", watchlist: "Watchlist",
@@ -107,9 +110,11 @@
 {#if searching}<p class="dim">Searching…</p>{/if}
 
 <div class="grid-posters results">
-  {#each results.filter((r) => session.features.movies || r.mediaType !== "movie") as r, i (`${r.mediaType}-${r.tmdbId}`)}
+  {#each results.filter((r) => session.features.movies || r.mediaType !== "movie") as r, i (`${r.mediaType}-${r.tmdbId}`)}<!-- eslint keep -->
     <div class="cell rise" style={`animation-delay:${Math.min(i, 14) * 35}ms`}>
-      <PosterImg path={r.posterPath} alt={r.title} glow />
+      <button class="pbtn" onclick={() => (preview = r)} aria-label={`Details for ${r.title}`}>
+        <PosterImg path={r.posterPath} alt={r.title} glow />
+      </button>
       <span class="t" title={r.title}>{r.title}</span>
       <span class="dim y">{r.mediaType === "tv" ? "Show" : "Movie"}{r.year ? ` · ${r.year}` : ""}</span>
       {#if r.inLibrary || addedIds.has(`${r.mediaType}-${r.tmdbId}`)}
@@ -123,8 +128,19 @@
   {/each}
 </div>
 
+{#if preview}
+  <TitlePreview
+    item={preview}
+    added={preview.inLibrary || addedIds.has(`${preview.mediaType}-${preview.tmdbId}`)}
+    onadd={() => { const it = preview!; preview = null; requestAdd(it); }}
+    onclose={() => (preview = null)}
+  />
+{/if}
+
 <style>
   .head { margin-bottom: 20px; }
+  .pbtn { background: none; padding: 0; border-radius: var(--r-lg); display: block; text-align: inherit; }
+  .pbtn:hover { filter: none; }
   .big { width: 100%; max-width: 720px; font-size: 16px; padding: 13px 16px; }
   .results { margin-top: 24px; }
   .cell { display: flex; flex-direction: column; gap: 4px; }

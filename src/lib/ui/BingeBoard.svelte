@@ -88,6 +88,12 @@
       .filter((c) => (filter === "all" ? true : c.myState === filter))
       .toSorted((a, b) => a.name.localeCompare(b.name)),
   );
+  let query = $state("");
+  const q = $derived(query.trim().toLowerCase());
+  // typing searches the whole pool, whatever chip is active
+  const matches = $derived(
+    pool.filter((c) => c.name.toLowerCase().includes(q)).toSorted((a, b) => a.name.localeCompare(b.name)),
+  );
   const readyCount = $derived(readyPool.filter((c) => c.ready!.kind !== "start").length);
   const startCount = $derived(readyPool.filter((c) => c.ready!.kind === "start").length);
 
@@ -183,19 +189,18 @@
   </div>
 </div>
 
-<div class="chips" style="margin-bottom:30px">
-  {#each chips as [value, label] (value)}
-    <button class="chip" class:on={filter === value} onclick={() => setFilter(value)}>{label}</button>
-  {/each}
+<div class="toolbar">
+  <div class="chips">
+    {#each chips as [value, label] (value)}
+      <button class="chip" class:on={filter === value} onclick={() => setFilter(value)}>{label}</button>
+    {/each}
+  </div>
+  <input placeholder="Filter…" bind:value={query} aria-label={animeOnly ? "Filter anime" : "Filter shows"} />
 </div>
 
-{#if loadError}
-  <p style="color:var(--red)">{loadError}</p>
-{:else if !loaded}
-  <p class="dim">Loading…</p>
-{:else if filter !== "watching"}
+{#snippet plainCards(list: BingeCard[])}
   <div class="grid-cards">
-    {#each others as c (c.tmdbId)}
+    {#each list as c (c.tmdbId)}
       <div class="card">
         <a href={`/show/${c.tmdbId}`}><PosterImg path={c.posterPath} alt={c.name} glow /></a>
         <div class="under">
@@ -206,7 +211,17 @@
       </div>
     {/each}
   </div>
-  {#if others.length === 0}<p class="dim">Nothing here.</p>{/if}
+  {#if list.length === 0}<p class="dim">Nothing here.</p>{/if}
+{/snippet}
+
+{#if loadError}
+  <p style="color:var(--red)">{loadError}</p>
+{:else if !loaded}
+  <p class="dim">Loading…</p>
+{:else if q !== ""}
+  {@render plainCards(matches)}
+{:else if filter !== "watching"}
+  {@render plainCards(others)}
 {:else}
   {#if pool.length === 0}
     {#if animeOnly}
@@ -309,6 +324,11 @@
 
 <style>
   .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 24px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 30px; }
+  .toolbar input { margin-left: auto; }
+  @media (max-width: 760px) {
+    .toolbar input { margin-left: 0; flex: 1; }
+  }
   .hero {
     position: relative; border-radius: 22px; overflow: hidden;
     border: 1px solid var(--line);

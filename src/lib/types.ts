@@ -207,6 +207,24 @@ export interface PairSummary {
   movies: number;
 }
 
+export interface PreviewSeason {
+  seasonNumber: number;
+  episodeCount: number;
+  firstAir: string | null;
+  lastAir: string | null;
+}
+
+export interface TitlePreview {
+  mediaType: "tv" | "movie";
+  title: string;
+  year: number | null;
+  posterPath: string | null;
+  overview: string | null;
+  runtime: number | null;
+  status: string | null;
+  seasons: PreviewSeason[];
+}
+
 export interface UpdateInfo {
   version: string;
   notes: string;
