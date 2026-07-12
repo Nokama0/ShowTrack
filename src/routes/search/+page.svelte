@@ -94,7 +94,7 @@
           { label: "Will watch", value: "watchlist", kind: "gold" },
         ]
       : [
-          { label: "Watched · marks every aired episode", value: "watched_all", kind: "gold" },
+          { label: "Watched", value: "watched_all", kind: "gold", hint: "marks every aired episode as watched" },
           { label: "Watching", value: "watching", kind: "gold" },
           { label: "Will watch", value: "plan_to_watch", kind: "gold" },
         ];

@@ -31,7 +31,10 @@
       <p>{dialog.current.message}</p>
       <div class="dlg-actions">
         {#each dialog.current.buttons as b (b.value)}
-          <button class={b.kind} onclick={() => settleDialog(b.value)}>{b.label}</button>
+          <button class={b.kind} onclick={() => settleDialog(b.value)}>
+            {b.label}
+            {#if b.hint}<span class="hintdot" title={b.hint}>?</span>{/if}
+          </button>
         {/each}
       </div>
     </div>
@@ -61,9 +64,18 @@
   p { color: var(--dim); font-size: 14px; line-height: 1.5; margin: 0 0 18px; }
   .dlg-actions { display: flex; flex-direction: column; gap: 8px; }
   .dlg-actions button {
-    width: 100%; padding: 10px 14px; border-radius: 12px;
+    position: relative;
+    width: 100%; padding: 10px 34px; border-radius: 12px;
     font-size: 14px; font-weight: 600;
     transition: filter 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+  }
+  /* absolute so the label stays centered like hint-less buttons */
+  .hintdot {
+    position: absolute; right: 10px; top: 50%; translate: 0 -50%;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    background: rgba(0, 0, 0, 0.22); cursor: help;
   }
   .dlg-actions button:active { transform: scale(0.98); }
   .ghost { background: var(--raise-hi); color: var(--dim); }

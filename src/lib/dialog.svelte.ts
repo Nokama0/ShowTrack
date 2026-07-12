@@ -5,6 +5,8 @@ export interface DialogButton {
   label: string;
   value: string;
   kind: "gold" | "ghost" | "danger";
+  /** shown as a small tooltip icon so long explanations stay off the label */
+  hint?: string;
 }
 
 export interface DialogRequest {
