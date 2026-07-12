@@ -123,6 +123,9 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: assets
+      - name: Version from tag
+        id: ver
+        run: echo "v=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
       - uses: softprops/action-gh-release@v3
         with:
           files: assets/**/*
@@ -130,4 +133,4 @@ jobs:
           draft: ${{ github.ref_type != 'tag' }}
           generate_release_notes: ${{ github.ref_type == 'tag' }}
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'dry-run' }}
-          name: ${{ github.ref_type == 'tag' && github.ref_name || 'Dry run (draft, safe to delete)' }}
+          name: ${{ github.ref_type == 'tag' && format('ShowTrack {0}', steps.ver.outputs.v) || 'Dry run (draft, safe to delete)' }}
