@@ -76,13 +76,14 @@ pub fn latest_seq(conn: &Connection) -> Result<i64> {
 /// lets the phone push its pre-pairing data to the desktop. Returns ops written.
 pub fn seed_from_library(conn: &Connection) -> Result<usize> {
     let mut n = 0usize;
-    let shows: Vec<(i64, String, i64, String)> = conn.prepare(
-        "SELECT tmdb_id, my_state, is_favorite, added_at FROM shows")?
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
+    let shows: Vec<(i64, String, i64, String, i64)> = conn.prepare(
+        "SELECT tmdb_id, my_state, is_favorite, added_at, is_anime FROM shows")?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)))?
         .collect::<std::result::Result<_, _>>()?;
-    for (id, state, fav, added) in shows {
+    for (id, state, fav, added, anime) in shows {
         let src = if id < 0 { "movie" } else { "tv" };
-        append(conn, "show", id, "add", Some(serde_json::json!({"state": state, "src": src})), &added)?;
+        append(conn, "show", id, "add",
+               Some(serde_json::json!({"state": state, "src": src, "anime": anime != 0})), &added)?;
         n += 1;
         if fav != 0 {
             append(conn, "show", id, "favorite", Some(serde_json::json!({"value": true})), &added)?;
@@ -221,8 +222,8 @@ pub fn show_toggle_favorite(conn: &Connection, id: i64, now: &str) -> Result<boo
 /// `src` names the TMDB record backing this entry: "tv" for native shows,
 /// "movie" for movies filed under Shows (negative local id) — the receiver
 /// needs it to fetch the right endpoint.
-pub fn log_show_add(conn: &Connection, id: i64, state: &str, src: &str, now: &str) -> Result<()> {
-    append(conn, "show", id, "add", Some(json!({"state": state, "src": src})), now)
+pub fn log_show_add(conn: &Connection, id: i64, state: &str, src: &str, anime: bool, now: &str) -> Result<()> {
+    append(conn, "show", id, "add", Some(json!({"state": state, "src": src, "anime": anime})), now)
 }
 
 /// Delete a show entirely (cascade drops its episodes and watches).
@@ -488,10 +489,15 @@ pub async fn apply_ops<T: crate::tmdb::Tmdb + ?Sized>(
                 };
                 let is_add = op.op == "add";
                 let state = pstr(&op, "state").unwrap_or_else(|| "watching".into());
+                let anime = op.payload.as_ref().and_then(|p| p["anime"].as_bool()).unwrap_or(false);
                 let ts = op.ts.clone();
                 if let Err(e) = with_db(db, move |c| {
                     let existed = crate::queries::show_exists(c, full.meta.tmdb_id)?;
                     crate::queries::upsert_show_meta(c, &full.meta, &ts)?;
+                    if anime {
+                        // the peer chose the anime section, whatever detection says
+                        c.execute("UPDATE shows SET is_anime=1 WHERE tmdb_id=?1", [full.meta.tmdb_id])?;
+                    }
                     if !existed && is_add {
                         crate::queries::set_show_user(c, full.meta.tmdb_id, &state, false, None, None)?;
                     }
@@ -771,7 +777,7 @@ mod tests {
         {
             let c = a.lock().unwrap();
             fixture(&c);
-            log_show_add(&c, 1, "watching", "tv", "2026-07-01T00:00:00Z").unwrap();
+            log_show_add(&c, 1, "watching", "tv", false, "2026-07-01T00:00:00Z").unwrap();
             episode_mark(&c, 10, true, "2026-07-01T01:00:00Z").unwrap();
         }
         // B favorites a movie it adds
@@ -843,6 +849,22 @@ mod tests {
         let out2 = apply_ops(&db, Some(&tmdb), vec![readd]).await;
         assert!(out2.error.is_none());
         assert!(crate::queries::show_exists(&db.lock().unwrap(), 1).unwrap());
+    }
+
+    #[tokio::test]
+    async fn peer_add_with_anime_flag_lands_in_the_anime_section() {
+        use std::sync::{Arc, Mutex};
+        let db = Arc::new(Mutex::new(crate::db::open_memory().unwrap()));
+        // MockTmdb detects is_anime=false; the flag in the op must win anyway
+        let add = Op { seq: 1, ts: "2026-07-01T00:00:00Z".into(), entity: "show".into(),
+            entity_id: 7, op: "add".into(),
+            payload: Some(json!({"state": "watching", "src": "tv", "anime": true})) };
+        let tmdb = MockTmdb::default();
+        let out = apply_ops(&db, Some(&tmdb), vec![add]).await;
+        assert!(out.error.is_none());
+        let c = db.lock().unwrap();
+        let anime: i64 = c.query_row("SELECT is_anime FROM shows WHERE tmdb_id=7", [], |r| r.get(0)).unwrap();
+        assert_eq!(anime, 1);
     }
 
     #[tokio::test]

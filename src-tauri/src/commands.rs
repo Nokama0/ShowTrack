@@ -296,7 +296,7 @@ pub async fn show_add(state: State<'_, AppState>, tmdb_id: i64, my_state: String
         queries::upsert_show_meta(c, &full.meta, &now_rfc3339())?;
         queries::set_show_user(c, full.meta.tmdb_id, &my_state, false, None, None)?;
         queries::upsert_episodes(c, full.meta.tmdb_id, &full.episodes)?;
-        oplog::log_show_add(c, full.meta.tmdb_id, &my_state, "tv", &now_rfc3339())?;
+        oplog::log_show_add(c, full.meta.tmdb_id, &my_state, "tv", full.meta.is_anime, &now_rfc3339())?;
         Ok(())
     })
     .await
@@ -328,55 +328,59 @@ pub async fn movie_add(state: State<'_, AppState>, tmdb_id: i64, my_state: Strin
 pub async fn title_add(state: State<'_, AppState>, tmdb_id: i64, src: String,
                        target: String, my_state: String) -> CmdResult<()> {
     let tmdb = client(&state).await?;
-    match (src.as_str(), target.as_str()) {
-        ("tv", "show") => {
-            let full = tmdb.show_with_episodes(tmdb_id).await.map_err(|e| e.to_string())?;
+    match target.as_str() {
+        "movie" => {
+            let (meta, op_src) = if src == "tv" {
+                let show = tmdb.tv_base(tmdb_id).await.map_err(|e| e.to_string())?;
+                (crate::tmdb::MovieMeta::from_show(&show), "tv")
+            } else {
+                (tmdb.movie(tmdb_id).await.map_err(|e| e.to_string())?, "movie")
+            };
             with_db(&state.db, move |c| {
-                queries::upsert_show_meta(c, &full.meta, &now_rfc3339())?;
-                queries::set_show_user(c, full.meta.tmdb_id, &my_state, false, None, None)?;
+                let now = now_rfc3339();
+                queries::upsert_movie_meta(c, &meta, &now)?;
+                let watched_at = (my_state == "watched").then(|| now.clone());
+                queries::set_movie_user(c, meta.tmdb_id, &my_state, watched_at.as_deref(), 0, false, None, None)?;
+                oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), op_src, &now)
+            })
+            .await
+            .map_err(|e| e.to_string())
+        }
+        "show" | "anime" => {
+            let as_anime = target == "anime";
+            let (full, op_src) = if src == "tv" {
+                (tmdb.show_with_episodes(tmdb_id).await.map_err(|e| e.to_string())?, "tv")
+            } else {
+                let movie = tmdb.movie(tmdb_id).await.map_err(|e| e.to_string())?;
+                (crate::tmdb::ShowFull {
+                    meta: crate::tmdb::ShowMeta::from_movie(&movie),
+                    episodes: Vec::new(),
+                }, "movie")
+            };
+            // "watched_all" is a UI intent, not a state: store watching and
+            // mark everything aired, exactly like the show page button
+            let mark_all = my_state == "watched_all";
+            let store_state = if mark_all { "watching".to_string() } else { my_state };
+            with_db(&state.db, move |c| {
+                let now = now_rfc3339();
+                queries::upsert_show_meta(c, &full.meta, &now)?;
+                if as_anime {
+                    // the user's section choice outranks TMDB detection
+                    c.execute("UPDATE shows SET is_anime=1 WHERE tmdb_id=?1", [full.meta.tmdb_id])?;
+                }
+                queries::set_show_user(c, full.meta.tmdb_id, &store_state, false, None, None)?;
                 queries::upsert_episodes(c, full.meta.tmdb_id, &full.episodes)?;
-                oplog::log_show_add(c, full.meta.tmdb_id, &my_state, "tv", &now_rfc3339())
+                oplog::log_show_add(c, full.meta.tmdb_id, &store_state, op_src,
+                                    as_anime || full.meta.is_anime, &now)?;
+                if mark_all {
+                    oplog::mark_all_aired(c, full.meta.tmdb_id, &today_local(), &now)?;
+                }
+                Ok(())
             })
             .await
             .map_err(|e| e.to_string())
         }
-        ("movie", "movie") => {
-            let meta = tmdb.movie(tmdb_id).await.map_err(|e| e.to_string())?;
-            with_db(&state.db, move |c| {
-                let now = now_rfc3339();
-                queries::upsert_movie_meta(c, &meta, &now)?;
-                let watched_at = (my_state == "watched").then(|| now.clone());
-                queries::set_movie_user(c, meta.tmdb_id, &my_state, watched_at.as_deref(), 0, false, None, None)?;
-                oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), "movie", &now)
-            })
-            .await
-            .map_err(|e| e.to_string())
-        }
-        ("tv", "movie") => {
-            let show = tmdb.tv_base(tmdb_id).await.map_err(|e| e.to_string())?;
-            let meta = crate::tmdb::MovieMeta::from_show(&show);
-            with_db(&state.db, move |c| {
-                let now = now_rfc3339();
-                queries::upsert_movie_meta(c, &meta, &now)?;
-                let watched_at = (my_state == "watched").then(|| now.clone());
-                queries::set_movie_user(c, meta.tmdb_id, &my_state, watched_at.as_deref(), 0, false, None, None)?;
-                oplog::log_movie_add(c, meta.tmdb_id, &my_state, watched_at.as_deref(), "tv", &now)
-            })
-            .await
-            .map_err(|e| e.to_string())
-        }
-        ("movie", "show") => {
-            let movie = tmdb.movie(tmdb_id).await.map_err(|e| e.to_string())?;
-            let meta = crate::tmdb::ShowMeta::from_movie(&movie);
-            with_db(&state.db, move |c| {
-                queries::upsert_show_meta(c, &meta, &now_rfc3339())?;
-                queries::set_show_user(c, meta.tmdb_id, &my_state, false, None, None)?;
-                oplog::log_show_add(c, meta.tmdb_id, &my_state, "movie", &now_rfc3339())
-            })
-            .await
-            .map_err(|e| e.to_string())
-        }
-        _ => Err("unknown add combination".into()),
+        _ => Err("unknown add target".into()),
     }
 }
 
@@ -528,10 +532,12 @@ pub async fn anime_scan(state: State<'_, AppState>) -> CmdResult<i64> {
             if meta.is_anime {
                 found += 1;
             }
-            let anime = meta.is_anime;
-            with_db(&state.db, move |c| queries::set_show_anime(c, id, anime))
-                .await
-                .map_err(|e| e.to_string())?;
+            // raise-only: a user-forced anime flag survives detection saying no
+            if meta.is_anime {
+                with_db(&state.db, move |c| queries::set_show_anime(c, id, true))
+                    .await
+                    .map_err(|e| e.to_string())?;
+            }
         }
     }
     with_db(&state.db, |c| queries::set_setting(c, "anime_scan_done", "1")).await

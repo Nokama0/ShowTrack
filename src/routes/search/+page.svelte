@@ -2,7 +2,7 @@
   import { goto } from "$app/navigation";
   import { api } from "$lib/api";
   import { session } from "$lib/session.svelte";
-  import { askDialog } from "$lib/dialog.svelte";
+  import { askDialog, type DialogButton } from "$lib/dialog.svelte";
   import type { SearchItem } from "$lib/types";
   import PosterImg from "$lib/ui/PosterImg.svelte";
 
@@ -47,7 +47,7 @@
     return () => clearTimeout(timer);
   });
 
-  async function add(item: SearchItem, target: "show" | "movie", myState: string) {
+  async function add(item: SearchItem, target: "show" | "anime" | "movie", myState: string) {
     error = "";
     try {
       await api.titleAdd(item.tmdbId, item.mediaType === "tv" ? "tv" : "movie", target, myState);
@@ -58,32 +58,44 @@
   }
 
   const stateLabels: Record<string, string> = {
-    watching: "Watching", plan_to_watch: "Plan to watch",
+    watching: "Watching", plan_to_watch: "Plan to watch", stopped: "Stopped",
     watched: "Watched", watchlist: "Watchlist",
   };
-  // the clicked state carried over to the other section keeps its intent:
-  // currently engaged stays engaged, saved for later stays saved for later
-  const crossState: Record<string, string> = {
-    watching: "watched", plan_to_watch: "watchlist",
-    watched: "watching", watchlist: "plan_to_watch",
-  };
 
-  async function requestAdd(item: SearchItem, target: "show" | "movie", myState: string) {
-    if (!session.askAddType || !session.features.movies) return add(item, target, myState);
-    const otherState = crossState[myState];
-    const showState = target === "show" ? myState : otherState;
-    const movieState = target === "movie" ? myState : otherState;
-    const pick = await askDialog({
+  async function requestAdd(item: SearchItem) {
+    const isTv = item.mediaType === "tv";
+    let target: "show" | "anime" | "movie" = isTv ? "show" : "movie";
+    if (session.askAddType) {
+      const buttons: DialogButton[] = [{ label: "As a show", value: "show", kind: "gold" }];
+      if (session.features.animePage) buttons.push({ label: "As anime", value: "anime", kind: "gold" });
+      if (session.features.movies) buttons.push({ label: "As a movie", value: "movie", kind: "gold" });
+      buttons.push({ label: "Cancel", value: "cancel", kind: "ghost" });
+      const pick = await askDialog({
+        title: `Add ${item.title}`,
+        message: `TMDB lists this as a ${isTv ? "show" : "movie"}. Add it to which section?`,
+        buttons,
+      });
+      if (pick !== "show" && pick !== "anime" && pick !== "movie") return;
+      target = pick;
+    }
+    const stateButtons: DialogButton[] = target === "movie"
+      ? [
+          { label: "Watched", value: "watched", kind: "gold" },
+          { label: "Will watch", value: "watchlist", kind: "gold" },
+        ]
+      : [
+          { label: "Watched · marks every aired episode", value: "watched_all", kind: "gold" },
+          { label: "Watching", value: "watching", kind: "gold" },
+          { label: "Will watch", value: "plan_to_watch", kind: "gold" },
+        ];
+    stateButtons.push({ label: "Cancel", value: "cancel", kind: "ghost" });
+    const st = await askDialog({
       title: `Add ${item.title}`,
-      message: `TMDB lists this as a ${item.mediaType === "tv" ? "show" : "movie"}. Where should it go?`,
-      buttons: [
-        { label: `As a show · ${stateLabels[showState]}`, value: "show", kind: "gold" },
-        { label: `As a movie · ${stateLabels[movieState]}`, value: "movie", kind: "gold" },
-        { label: "Cancel", value: "cancel", kind: "ghost" },
-      ],
+      message: "How far along are you?",
+      buttons: stateButtons,
     });
-    if (pick !== "show" && pick !== "movie") return;
-    await add(item, pick, pick === "show" ? showState : movieState);
+    if (!st || st === "cancel") return;
+    await add(item, target, st);
   }
 </script>
 
@@ -100,15 +112,9 @@
       <span class="dim y">{r.mediaType === "tv" ? "Show" : "Movie"}{r.year ? ` · ${r.year}` : ""}</span>
       {#if r.inLibrary || addedIds.has(`${r.mediaType}-${r.tmdbId}`)}
         <span class="badge">✓ {(r.libState && stateLabels[r.libState]) || "in library"}</span>
-      {:else if r.mediaType === "tv"}
-        <div class="row">
-          <button class="btn-mini gold" onclick={() => requestAdd(r, "show", "watching")}>Watching</button>
-          <button class="btn-mini" onclick={() => requestAdd(r, "show", "plan_to_watch")}>Plan</button>
-        </div>
       {:else}
         <div class="row">
-          <button class="btn-mini gold" onclick={() => requestAdd(r, "movie", "watched")}>Watched</button>
-          <button class="btn-mini" onclick={() => requestAdd(r, "movie", "watchlist")}>Watchlist</button>
+          <button class="btn-mini gold" onclick={() => requestAdd(r)}>+ Add to library</button>
         </div>
       {/if}
     </div>
