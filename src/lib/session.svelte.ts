@@ -21,6 +21,9 @@ export const session = $state({
   navReorder: false,
   navSeparators: false,
   navOrder: ["/", "/anime", "/airing", "/movies", "/search"] as string[],
+  keepSearch: false,
+  searchQuery: "", // runtime only: the preserved Search text while keepSearch is on
+  tiles: { shows: 184, anime: 184, movies: 172 } as Record<"shows" | "anime" | "movies", number>,
   tabs: {
     shows: "watching",
     anime: "watching",
@@ -46,6 +49,16 @@ export async function loadSession() {
     session.allFirst = s["all_first"] === "1";
     session.episodeMode = s["episode_mode"] === "1";
     session.navReorder = s["nav_reorder"] === "1";
+    session.keepSearch = s["keep_search"] === "1";
+    const tile = (key: string, dflt: number) => {
+      const v = parseInt(s[key] ?? "", 10);
+      return Number.isFinite(v) ? Math.min(260, Math.max(120, v)) : dflt;
+    };
+    session.tiles = {
+      shows: tile("tile_shows", 184),
+      anime: tile("tile_anime", 184),
+      movies: tile("tile_movies", 172),
+    };
     session.navSeparators = s["nav_separators"] === "1";
     const canonicalNav = ["/", "/anime", "/airing", "/movies", "/search"];
     const storedNav = (s["nav_order"] ?? "").split(",").filter((h) => canonicalNav.includes(h));

@@ -11,7 +11,12 @@
     if (!session.features.searchPage) goto("/", { replaceState: true });
   });
 
-  let query = $state("");
+  // svelte-ignore state_referenced_locally -- the preserved search seeds the initial value only
+  let query = $state(session.keepSearch ? session.searchQuery : "");
+
+  $effect(() => {
+    if (session.keepSearch) session.searchQuery = query;
+  });
   let results = $state<SearchItem[]>([]);
   let searching = $state(false);
   let error = $state("");

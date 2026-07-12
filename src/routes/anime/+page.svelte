@@ -88,7 +88,7 @@
 {#if animeMovies.length > 0 && session.features.movies}
   <section class="amovies">
     <h2>Anime <b>movies</b><small>filed here from Search; they keep their movie controls</small></h2>
-    <div class="grid-posters">
+    <div class="grid-posters" style={`--tile:${session.tiles.anime}px`}>
       {#each animeMovies as m, i (m.tmdbId)}
         <button class="cell rise" style={`animation-delay:${Math.min(i, 14) * 35}ms`} onclick={() => (selected = m)}>
           <PosterImg path={m.posterPath} alt={m.title} glow />
