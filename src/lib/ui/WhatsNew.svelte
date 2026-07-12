@@ -94,12 +94,10 @@
   li::marker { color: var(--gold); }
   .got { margin-top: 18px; align-self: flex-start; padding: 9px 22px; font-size: 13.5px; }
   @media (max-width: 760px) {
-    .overlay { align-items: flex-end; padding: 0; }
-    .panel {
-      width: 100%; max-width: none; max-height: 86vh;
-      border-radius: 22px 22px 0 0;
-      padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    .overlay {
+      padding: calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom));
     }
+    .panel { width: 100%; max-width: none; max-height: 86vh; }
     .got { width: 100%; justify-content: center; align-self: stretch; }
   }
 </style>
