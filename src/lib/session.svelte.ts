@@ -52,7 +52,7 @@ export async function loadSession() {
     session.keepSearch = s["keep_search"] === "1";
     const tile = (key: string, dflt: number) => {
       const v = parseInt(s[key] ?? "", 10);
-      return Number.isFinite(v) ? Math.min(260, Math.max(120, v)) : dflt;
+      return Number.isFinite(v) ? Math.min(260, Math.max(80, v)) : dflt;
     };
     session.tiles = {
       shows: tile("tile_shows", 180),
