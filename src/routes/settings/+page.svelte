@@ -438,7 +438,7 @@
         <label class="featrow">
           <input type="checkbox" checked={session.askAddType}
                  onchange={(e) => togglePref("search_ask_type", "askAddType", e.currentTarget.checked)} />
-          <span><b>Ask where to add</b> <span class="dim">· adding from Search asks whether the title goes with shows or movies</span></span>
+          <span><b>Ask where to add</b> <span class="dim">· adding from Search asks whether the title goes with shows, anime or movies</span></span>
         </label>
         <label class="featrow">
           <input type="checkbox" checked={session.allFirst}

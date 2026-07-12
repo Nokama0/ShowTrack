@@ -82,7 +82,7 @@ async fn import_one_show<T: Tmdb + ?Sized>(
         queries::upsert_show_meta(conn, &full.meta, &now)?;
         if !existed {
             queries::set_show_user(conn, full.meta.tmdb_id, &state, favorite, Some(tvdb_id), imdb_id.as_deref())?;
-            crate::oplog::log_show_add(conn, full.meta.tmdb_id, &state, "tv", &now)?;
+            crate::oplog::log_show_add(conn, full.meta.tmdb_id, &state, "tv", full.meta.is_anime, &now)?;
         }
         queries::upsert_episodes(conn, full.meta.tmdb_id, &full.episodes)?;
         crate::oplog::import_watches(conn, &mark, &now)?;

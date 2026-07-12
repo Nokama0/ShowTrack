@@ -29,7 +29,7 @@ pub fn upsert_show_meta(conn: &Connection, m: &ShowMeta, now: &str) -> Result<()
          ON CONFLICT(tmdb_id) DO UPDATE SET
            name=excluded.name, year=excluded.year, poster_path=excluded.poster_path,
            backdrop_path=excluded.backdrop_path, overview=excluded.overview,
-           tmdb_status=excluded.tmdb_status, is_anime=excluded.is_anime,
+           tmdb_status=excluded.tmdb_status, is_anime=MAX(is_anime, excluded.is_anime),
            last_refreshed_at=excluded.last_refreshed_at",
         params![m.tmdb_id, m.name, m.year, m.poster_path, m.backdrop_path, m.overview, m.status,
                 m.is_anime as i64, now])?;
