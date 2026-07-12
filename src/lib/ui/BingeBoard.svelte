@@ -5,6 +5,7 @@
   import type { BingeCard } from "$lib/types";
   import PosterImg from "$lib/ui/PosterImg.svelte";
   import Ring from "$lib/ui/Ring.svelte";
+  import TileSlider from "$lib/ui/TileSlider.svelte";
 
   let { animeOnly = false }: { animeOnly?: boolean } = $props();
 
@@ -113,6 +114,7 @@
   }
 
   let query = $state("");
+  const tileVar = $derived(`--tile:${session.tiles[animeOnly ? "anime" : "shows"]}px`);
   const q = $derived(query.trim().toLowerCase());
   // typing searches the whole pool, whatever chip is active
   const matches = $derived(
@@ -220,10 +222,11 @@
     {/each}
   </div>
   <input placeholder="Filter…" bind:value={query} aria-label={animeOnly ? "Filter anime" : "Filter shows"} />
+  <TileSlider section={animeOnly ? "anime" : "shows"} />
 </div>
 
 {#snippet plainCards(list: BingeCard[])}
-  <div class="grid-cards">
+  <div class="grid-cards" style={tileVar}>
     {#each list as c (c.tmdbId)}
       <div class="card">
         <a href={`/show/${c.tmdbId}`}><PosterImg path={c.posterPath} alt={c.name} glow /></a>
@@ -289,7 +292,7 @@
       {#if mainGrid.length === 0 && !hero}
         <p class="dim">{session.episodeMode ? "Nothing new to watch right now." : "No complete seasons waiting. Check Airing for what's on the way."}</p>
       {:else}
-        <div class="grid-cards">
+        <div class="grid-cards" style={tileVar}>
           {#each mainGrid as c, i (c.tmdbId)}
             <div class="card rise" style={`animation-delay:${Math.min(i, 12) * 45}ms`}>
               {#if c.ready && !marked.has(c.tmdbId)}

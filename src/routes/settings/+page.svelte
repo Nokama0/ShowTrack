@@ -68,7 +68,7 @@
     }
   }
 
-  async function togglePref(key: string, field: "askAddType" | "allFirst" | "episodeMode" | "navReorder" | "navSeparators", on: boolean) {
+  async function togglePref(key: string, field: "askAddType" | "allFirst" | "episodeMode" | "navReorder" | "navSeparators" | "keepSearch", on: boolean) {
     session[field] = on;
     try {
       await api.settingsSet(key, on ? "1" : "0");
@@ -454,6 +454,11 @@
           <input type="checkbox" checked={session.navReorder}
                  onchange={(e) => togglePref("nav_reorder", "navReorder", e.currentTarget.checked)} />
           <span><b>Re-order navigation</b> <span class="dim">· drag the sidebar buttons into your own order; Settings stays put</span></span>
+        </label>
+        <label class="featrow">
+          <input type="checkbox" checked={session.keepSearch}
+                 onchange={(e) => togglePref("keep_search", "keepSearch", e.currentTarget.checked)} />
+          <span><b>Keep search</b> <span class="dim">· the Search page remembers your last search until you clear it</span></span>
         </label>
         <label class="featrow">
           <input type="checkbox" checked={session.navSeparators}

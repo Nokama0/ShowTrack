@@ -7,6 +7,7 @@
   import PosterImg from "$lib/ui/PosterImg.svelte";
   import Select from "$lib/ui/Select.svelte";
   import MovieSheet from "$lib/ui/MovieSheet.svelte";
+  import TileSlider from "$lib/ui/TileSlider.svelte";
 
   $effect(() => {
     if (!session.features.movies) goto("/", { replaceState: true });
@@ -121,6 +122,7 @@
     onchange={(v) => (sort = v as "watchedAt" | "title" | "year")}
   />
   <input placeholder="Filter…" bind:value={query} />
+  <TileSlider section="movies" />
 </div>
 
 {#if loadError}
@@ -130,7 +132,7 @@
 {:else if visible.length === 0}
   <p class="dim">Nothing here yet. Add movies via Search.</p>
 {:else}
-  <div class="grid-posters">
+  <div class="grid-posters" style={`--tile:${session.tiles.movies}px`}>
     {#each visible.slice(0, limit) as m, i (m.tmdbId)}
       <button class="cell rise" style={`animation-delay:${Math.min(i, 14) * 35}ms`} onclick={() => (selected = m)}>
         <PosterImg path={m.posterPath} alt={m.title} glow />
