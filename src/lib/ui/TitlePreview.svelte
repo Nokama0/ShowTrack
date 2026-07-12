@@ -113,7 +113,7 @@
   }
   .srow b { font-size: 13.5px; }
   .srow span { font-size: 12.5px; white-space: nowrap; }
-  .mactions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .mactions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
   @media (max-width: 760px) {
     .overlay { align-items: flex-end; }
     .modal {
