@@ -18,6 +18,9 @@ export const session = $state({
   askAddType: false,
   allFirst: false,
   episodeMode: false,
+  navReorder: false,
+  navSeparators: false,
+  navOrder: ["/", "/anime", "/airing", "/movies", "/search"] as string[],
   tabs: {
     shows: "watching",
     anime: "watching",
@@ -42,6 +45,11 @@ export async function loadSession() {
     session.askAddType = s["search_ask_type"] === "1";
     session.allFirst = s["all_first"] === "1";
     session.episodeMode = s["episode_mode"] === "1";
+    session.navReorder = s["nav_reorder"] === "1";
+    session.navSeparators = s["nav_separators"] === "1";
+    const canonicalNav = ["/", "/anime", "/airing", "/movies", "/search"];
+    const storedNav = (s["nav_order"] ?? "").split(",").filter((h) => canonicalNav.includes(h));
+    session.navOrder = [...storedNav, ...canonicalNav.filter((h) => !storedNav.includes(h))];
     const pick = (key: string, allowed: string[], dflt: string) =>
       allowed.includes(s[key]) ? s[key] : dflt;
     session.tabs = {

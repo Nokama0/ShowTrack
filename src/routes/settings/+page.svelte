@@ -68,7 +68,7 @@
     }
   }
 
-  async function togglePref(key: string, field: "askAddType" | "allFirst" | "episodeMode", on: boolean) {
+  async function togglePref(key: string, field: "askAddType" | "allFirst" | "episodeMode" | "navReorder" | "navSeparators", on: boolean) {
     session[field] = on;
     try {
       await api.settingsSet(key, on ? "1" : "0");
@@ -449,6 +449,16 @@
           <input type="checkbox" checked={session.episodeMode}
                  onchange={(e) => togglePref("episode_mode", "episodeMode", e.currentTarget.checked)} />
           <span><b>Episode-by-episode</b> <span class="dim">· shows surface as soon as an episode airs, no waiting for the full season</span></span>
+        </label>
+        <label class="featrow">
+          <input type="checkbox" checked={session.navReorder}
+                 onchange={(e) => togglePref("nav_reorder", "navReorder", e.currentTarget.checked)} />
+          <span><b>Re-order navigation</b> <span class="dim">· drag the sidebar buttons into your own order; Settings stays put</span></span>
+        </label>
+        <label class="featrow">
+          <input type="checkbox" checked={session.navSeparators}
+                 onchange={(e) => togglePref("nav_separators", "navSeparators", e.currentTarget.checked)} />
+          <span><b>Navigation separators</b> <span class="dim">· a thin line between the sidebar buttons</span></span>
         </label>
       </div>
     </section>

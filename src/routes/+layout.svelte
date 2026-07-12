@@ -22,15 +22,38 @@
     { href: "/search", label: "Search", icon: "search" },
     { href: "/settings", label: "Settings", icon: "settings" },
   ] as const;
+  const settingsLink = allLinks[allLinks.length - 1];
+  // the user's order drives every nav surface; Settings is pinned separately
   const links = $derived(
-    allLinks.filter(
-      (l) =>
-        (l.href !== "/anime" || session.features.animePage) &&
-        (l.href !== "/airing" || session.features.airingPage) &&
-        (l.href !== "/movies" || session.features.movies) &&
-        (l.href !== "/search" || session.features.searchPage),
-    ),
+    session.navOrder
+      .map((h) => allLinks.find((l) => l.href === h))
+      .filter((l): l is (typeof allLinks)[number] => !!l)
+      .filter(
+        (l) =>
+          (l.href !== "/anime" || session.features.animePage) &&
+          (l.href !== "/airing" || session.features.airingPage) &&
+          (l.href !== "/movies" || session.features.movies) &&
+          (l.href !== "/search" || session.features.searchPage),
+      ),
   );
+
+  // drag-to-reorder operates on the visible list; hidden links keep their slot
+  let dragIdx = $state<number | null>(null);
+  let overIdx = $state<number | null>(null);
+
+  function dropOn(to: number) {
+    const from = dragIdx;
+    dragIdx = null;
+    overIdx = null;
+    if (from === null || from === to) return;
+    const visible = links.map((l) => l.href);
+    const [moved] = visible.splice(from, 1);
+    visible.splice(to, 0, moved);
+    const visibleSet = new Set<string>(visible);
+    let vi = 0;
+    session.navOrder = session.navOrder.map((h) => (visibleSet.has(h) ? visible[vi++] : h));
+    api.settingsSet("nav_order", session.navOrder.join(",")).catch(() => {});
+  }
 
   let lastAuto = 0;
   const autoSync = async () => {
@@ -93,14 +116,33 @@
 <div class="shell">
   <nav class="dock" aria-label="Sections">
     <div class="mark"><img src="/appicon.png" alt="ShowTrack" /></div>
-    {#each links as l (l.href)}
-      <a href={l.href} class:on={page.url.pathname === l.href}>
+    {#each links as l, i (l.href)}
+      {#if session.navSeparators && i > 0}<span class="navsep"></span>{/if}
+      <a
+        href={l.href}
+        class:on={page.url.pathname === l.href}
+        class:grab={session.navReorder}
+        class:dragging={dragIdx === i}
+        class:dropmark={overIdx === i && dragIdx !== null && dragIdx !== i}
+        draggable={session.navReorder}
+        ondragstart={(e) => { dragIdx = i; e.dataTransfer?.setData("text/plain", l.href); }}
+        ondragover={(e) => { if (session.navReorder) { e.preventDefault(); overIdx = i; } }}
+        ondragleave={() => { if (overIdx === i) overIdx = null; }}
+        ondrop={(e) => { e.preventDefault(); dropOn(i); }}
+        ondragend={() => { dragIdx = null; overIdx = null; }}
+      >
         <span class="ico"><NavIcon name={l.icon} size={19} /></span>{l.label}
       </a>
     {/each}
+    <div class="dockend">
+      {#if session.navSeparators}<span class="navsep"></span>{/if}
+      <a href={settingsLink.href} class:on={page.url.pathname === settingsLink.href}>
+        <span class="ico"><NavIcon name={settingsLink.icon} size={19} /></span>{settingsLink.label}
+      </a>
+    </div>
   </nav>
   <nav class="tabbar" class:solid={isAndroid} aria-label="Sections, mobile">
-    {#each links as l (l.href)}
+    {#each [...links, settingsLink] as l (l.href)}
       <a href={l.href} class:on={page.url.pathname === l.href}>
         <span class="ico"><NavIcon name={l.icon} size={22} /></span>{l.label}
       </a>
@@ -149,6 +191,14 @@
   .dock a:hover { background: var(--raise); color: var(--text); }
   .dock a:active { transform: scale(0.94); }
   .dock a.on { background: var(--raise-hi); color: var(--text); box-shadow: inset 0 0 0 1px var(--gold); }
+  .dockend {
+    margin-top: auto; width: 100%;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .navsep { width: 30px; height: 1px; background: var(--line); flex-shrink: 0; }
+  .dock a.grab { cursor: grab; }
+  .dock a.dragging { opacity: 0.35; }
+  .dock a.dropmark { box-shadow: inset 0 2px 0 var(--gold); }
   main { flex: 1; min-width: 0; padding: var(--main-pad-y) var(--main-pad-x) 64px; }
   .tabbar {
     display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
