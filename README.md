@@ -85,7 +85,8 @@ It regenerates `src-tauri/gen/android` and will OVERWRITE these hand-edits; re-a
 - `app/src/main/res/values/colors.xml`: `showtrackBg` (#07090F)
 - `app/src/main/res/values/themes.xml` AND `values-night/themes.xml`: the four dark-chrome items
 - `app/src/main/java/com/nokama/showtrack/MainActivity.kt`: the system-bar insets listener
-  (Android 15 forces edge-to-edge; without it the app draws under the status bar)
+  (Android 15 forces edge-to-edge; without it the app draws under the status bar) plus the
+  `onWebViewCreate` override that disables the native scrollbars (they draw above the tab bar)
 - `app/src/main/AndroidManifest.xml`: `android:screenOrientation="portrait"` on the activity
 - Launcher icon: `res/mipmap-*` pngs, `res/mipmap-anydpi-v26/ic_launcher.xml`, and the
   `ic_launcher_background` color (#07090F) in `res/values/colors.xml`. Legacy pngs come from
