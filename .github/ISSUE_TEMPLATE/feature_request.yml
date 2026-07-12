@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest a new capability or an improvement to an existing one.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome. Focus on the problem you want solved, not only the solution you have in mind.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The situation or friction that prompted the idea.
+      placeholder: I rewatch shows and want to track a second watch-through separately.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like ShowTrack to do?
+      description: Describe the feature or change. Sketches and examples help.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Shows
+        - Anime
+        - Airing
+        - Movies
+        - Search
+        - Settings
+        - Sync
+        - Whole app / not sure
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have considered
+      description: Other ways you have tried to get this done, in ShowTrack or elsewhere.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and did not find the same request.
+          required: true

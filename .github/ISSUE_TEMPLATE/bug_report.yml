@@ -1,0 +1,76 @@
+name: Bug report
+description: Something in ShowTrack is broken or behaving wrong.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more precise the steps, the faster it gets fixed.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect instead?
+      placeholder: When I mark a season watched, the show stays in the ready grid.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A numbered list is ideal.
+      placeholder: |
+        1. Open the Shows page
+        2. Click the ring on a show
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows (installer)
+        - Windows (portable exe)
+        - Android
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ShowTrack version
+      description: Settings > Maintenance shows it (e.g. version 0.2.7).
+      placeholder: "0.2.7"
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version
+      description: e.g. Windows 11 23H2, or Android 15 on a Galaxy S25.
+    validations:
+      required: false
+  - type: textarea
+    id: banner
+    attributes:
+      label: Any on-screen error or banner text?
+      description: Copy the exact wording if the app showed a message.
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag images in here if they help. A short screen recording is even better.
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I am on the latest version (checked via Settings > Maintenance > Check for updates, or the releases page).
+          required: true
+        - label: I searched existing issues and did not find a duplicate.
+          required: true

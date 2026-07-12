@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Download the latest version
+    url: https://github.com/Nokama0/ShowTrack/releases/latest
+    about: On an older build? Grab the newest release before filing an issue.
+  - name: Setup and usage
+    url: https://github.com/Nokama0/ShowTrack#readme
+    about: The README covers installing, the TMDB key, and pairing your phone.

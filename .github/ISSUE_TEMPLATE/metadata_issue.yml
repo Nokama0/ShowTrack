@@ -1,0 +1,54 @@
+name: Wrong or missing show data
+description: A title shows wrong info, missing episodes, or is filed as the wrong type.
+title: "[Data]: "
+labels: ["metadata"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ShowTrack gets all show, movie and episode data from [TheMovieDB](https://www.themoviedb.org).
+        If the source data on TMDB is wrong, it can often be fixed there and a Refresh will pull it in.
+  - type: input
+    id: title
+    attributes:
+      label: Title
+      description: The show or movie affected.
+      placeholder: "Re:ZERO -Starting Life in Another World-"
+    validations:
+      required: true
+  - type: input
+    id: tmdb-link
+    attributes:
+      label: TMDB link
+      description: The themoviedb.org page for this title, if you can find it.
+      placeholder: "https://www.themoviedb.org/tv/65942"
+    validations:
+      required: false
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is wrong?
+      options:
+        - Filed as the wrong type (show vs movie)
+        - Not detected as anime / wrongly detected as anime
+        - Missing or extra episodes
+        - Wrong episode air dates
+        - Wrong poster, title, year or overview
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What does ShowTrack show, and what is correct?
+      placeholder: Season 2 lists 13 episodes but it actually aired 25.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I tried Settings > Maintenance > Refresh now and the data is still wrong.
+          required: false

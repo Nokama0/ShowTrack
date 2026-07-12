@@ -1,0 +1,34 @@
+name: Question or help
+description: Ask how something works or get help setting it up.
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For setup and usage questions. If you have found a bug, use the Bug report template instead.
+  - type: textarea
+    id: question
+    attributes:
+      label: What would you like to know?
+      placeholder: How do I move a title from Movies into the Anime section?
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows (installer)
+        - Windows (portable exe)
+        - Android
+        - Not relevant
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: ShowTrack version
+      placeholder: "0.2.7"
+    validations:
+      required: false
