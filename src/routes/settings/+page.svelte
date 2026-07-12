@@ -68,7 +68,7 @@
     }
   }
 
-  async function togglePref(key: string, field: "askAddType" | "allFirst", on: boolean) {
+  async function togglePref(key: string, field: "askAddType" | "allFirst" | "episodeMode", on: boolean) {
     session[field] = on;
     try {
       await api.settingsSet(key, on ? "1" : "0");
@@ -444,6 +444,11 @@
           <input type="checkbox" checked={session.allFirst}
                  onchange={(e) => togglePref("all_first", "allFirst", e.currentTarget.checked)} />
           <span><b>All filters first</b> <span class="dim">· the All chip leads on Shows, Anime and Movies</span></span>
+        </label>
+        <label class="featrow">
+          <input type="checkbox" checked={session.episodeMode}
+                 onchange={(e) => togglePref("episode_mode", "episodeMode", e.currentTarget.checked)} />
+          <span><b>Episode-by-episode</b> <span class="dim">· shows surface as soon as an episode airs, no waiting for the full season</span></span>
         </label>
       </div>
     </section>
