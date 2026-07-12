@@ -27,8 +27,10 @@
 
 <style>
   .ring {
-    position: absolute; top: -9px; right: -7px; z-index: 2;
-    width: 54px; height: 54px; border-radius: 50%; padding: 0;
+    /* scales with the tile-size setting (--tile on the grid); 54px at the 180 default */
+    --ring: calc(var(--tile, 180px) * 0.3);
+    position: absolute; top: calc(var(--ring) * -0.167); right: calc(var(--ring) * -0.13); z-index: 2;
+    width: var(--ring); height: var(--ring); border-radius: 50%; padding: 0;
     background: var(--raise-hi);
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
@@ -46,12 +48,12 @@
     transition: stroke-dashoffset 0.5s cubic-bezier(0.2, 0.7, 0.3, 1);
   }
   .ring b {
-    font-size: 18px; color: var(--gold); font-weight: 700;
+    font-size: calc(var(--ring) * 0.333); color: var(--gold); font-weight: 700;
     transform: translateY(-1px); position: relative;
   }
   .ring:hover { transform: scale(1.08); filter: none; }
   @media (max-width: 760px) {
-    .ring { width: 48px; height: 48px; top: -8px; right: -6px; }
-    .ring b { font-size: 16px; }
+    /* mobile pins its own tile width, so pin the ring too */
+    .ring { --ring: 48px; top: -8px; right: -6px; }
   }
 </style>

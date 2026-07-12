@@ -250,10 +250,12 @@
           </summary>
           {#each season.episodes as ep (ep.tmdbId)}
             {@const rel = relDays(ep.airDate)}
-            <label class="ep">
+            {@const aired = !!ep.airDate && ep.airDate <= today}
+            <label class="ep" class:future={!aired}>
               <input
                 type="checkbox"
                 checked={ep.watched}
+                disabled={!aired && !ep.watched}
                 onchange={(e) => toggleEpisode(ep.tmdbId, e.currentTarget.checked)}
               />
               <span class="dim senum">{se(ep.seasonNumber, ep.episodeNumber)}</span>
@@ -326,6 +328,10 @@
     transition: background-color 0.15s ease;
   }
   .ep:hover { background: rgba(255, 255, 255, 0.03); }
+  /* an episode that has not aired yet cannot be watched */
+  .ep.future { cursor: default; }
+  .ep.future:hover { background: none; }
+  .ep.future .senum, .ep.future .ename { opacity: 0.5; }
   .senum { font-family: monospace; }
   .ename { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .edate { font-size: 12px; }
