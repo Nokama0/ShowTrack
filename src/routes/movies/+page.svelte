@@ -58,7 +58,14 @@
   let movies = $state<MovieRow[]>([]);
   let loaded = $state(false);
   let loadError = $state("");
-  let tab = $state<"watched" | "watchlist" | "all">("watched");
+  type Tab = "watched" | "watchlist" | "all";
+  let tab = $state<Tab>(session.tabs.movies as Tab);
+
+  function setTab(value: Tab) {
+    tab = value;
+    session.tabs.movies = value;
+    api.settingsSet("tab_movies", value).catch(() => {}); // cosmetic preference, losing it is fine
+  }
   const tabDefs = [
     ["watched", "Watched"],
     ["watchlist", "Watchlist"],
@@ -180,7 +187,7 @@
 <div class="toolbar">
   <div class="chips">
     {#each tabs as [value, label] (value)}
-      <button class="chip" class:on={tab === value} onclick={() => (tab = value)}>{label}</button>
+      <button class="chip" class:on={tab === value} onclick={() => setTab(value)}>{label}</button>
     {/each}
   </div>
   <Select

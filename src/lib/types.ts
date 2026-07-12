@@ -91,6 +91,7 @@ export interface SearchItem {
   posterPath: string | null;
   overview: string | null;
   inLibrary: boolean;
+  libState: string | null;
 }
 
 export interface ImportProgress {

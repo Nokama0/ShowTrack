@@ -99,7 +99,7 @@
       <span class="t" title={r.title}>{r.title}</span>
       <span class="dim y">{r.mediaType === "tv" ? "Show" : "Movie"}{r.year ? ` · ${r.year}` : ""}</span>
       {#if r.inLibrary || addedIds.has(`${r.mediaType}-${r.tmdbId}`)}
-        <span class="badge">✓ in library</span>
+        <span class="badge">✓ {(r.libState && stateLabels[r.libState]) || "in library"}</span>
       {:else if r.mediaType === "tv"}
         <div class="row">
           <button class="btn-mini gold" onclick={() => requestAdd(r, "show", "watching")}>Watching</button>

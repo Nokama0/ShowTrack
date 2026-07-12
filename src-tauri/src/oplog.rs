@@ -326,6 +326,16 @@ fn pstr(op: &Op, key: &str) -> Option<String> {
     op.payload.as_ref()?.get(key)?.as_str().map(str::to_string)
 }
 
+/// True when a local remove tombstone is at least as new as `ts`: the entity
+/// was deleted here at or after that moment, so an op from before the removal
+/// must not resurrect it (not even via the prefetch path).
+fn removed_since(conn: &Connection, entity: &str, entity_id: i64, ts: &str) -> Result<bool> {
+    let n: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM oplog WHERE entity=?1 AND entity_id=?2 AND op='remove' AND ts>=?3",
+        params![entity, entity_id.to_string(), ts], |r| r.get(0))?;
+    Ok(n > 0)
+}
+
 /// Apply one peer op to local tables. Never appends to the oplog.
 /// Returns false when skipped (LWW-older, or entity unknown for non-add ops).
 pub fn apply_op_local(conn: &Connection, op: &Op) -> Result<bool> {
@@ -414,6 +424,28 @@ pub async fn apply_ops<T: crate::tmdb::Tmdb + ?Sized>(
     use crate::import::with_db;
     let mut out = ApplyOutcome::default();
     for op in ops {
+        // the prefetch below would resurrect a removed entity before the LWW
+        // check can reject the op, so tombstones are honoured first
+        if op.op != "remove" {
+            let tomb: Option<(&str, i64)> = match op.entity.as_str() {
+                "ep" => op.payload.as_ref().and_then(|p| p["show"].as_i64()).map(|id| ("show", id)),
+                "show" => Some(("show", op.entity_id)),
+                "movie" => Some(("movie", op.entity_id)),
+                _ => None,
+            };
+            if let Some((te, tid)) = tomb {
+                let ts = op.ts.clone();
+                match with_db(db, move |c| removed_since(c, te, tid, &ts)).await {
+                    Ok(true) => {
+                        out.skipped += 1;
+                        out.last_seq = Some(op.seq);
+                        continue;
+                    }
+                    Ok(false) => {}
+                    Err(e) => { out.error = Some(e.to_string()); break; }
+                }
+            }
+        }
         // pre-fetch metadata where the op needs an entity we do not have
         let fetch_show: Option<i64> = match (op.entity.as_str(), op.op.as_str()) {
             ("show", "add") => Some(op.entity_id),
@@ -773,6 +805,44 @@ mod tests {
         assert!(out_b2.error.is_none() && out_a2.error.is_none());
         assert_eq!(b_watches(&b.lock().unwrap()), 1); // still exactly one watch row
         assert_eq!(a_movie(&a.lock().unwrap()), ("watchlist".into(), 1)); // state + favorite unchanged
+    }
+
+    #[tokio::test]
+    async fn tombstone_blocks_resurrection_by_older_peer_ops() {
+        use std::sync::{Arc, Mutex};
+        let db = Arc::new(Mutex::new(crate::db::open_memory().unwrap()));
+        {
+            let c = db.lock().unwrap();
+            fixture(&c);
+            show_remove(&c, 1, "2026-07-05T00:00:00Z").unwrap();
+            movie_remove(&c, 50, "2026-07-05T00:00:00Z").unwrap();
+        }
+        let tmdb = MockTmdb::default();
+        // a peer that never saw the removal sends its older ops: an ep watch
+        // (whose prefetch used to re-add the show), a favorite, and the add
+        let stale = vec![
+            Op { seq: 1, ts: "2026-07-01T00:00:00Z".into(), entity: "show".into(), entity_id: 1,
+                 op: "add".into(), payload: Some(json!({"state": "watching", "src": "tv"})) },
+            Op { seq: 2, ts: "2026-07-01T01:00:00Z".into(), entity: "ep".into(), entity_id: 10,
+                 op: "watch".into(), payload: Some(json!({"watched_at": "2026-07-01T01:00:00Z", "show": 1})) },
+            Op { seq: 3, ts: "2026-07-01T02:00:00Z".into(), entity: "movie".into(), entity_id: 50,
+                 op: "favorite".into(), payload: Some(json!({"value": true})) },
+        ];
+        let out = apply_ops(&db, Some(&tmdb), stale).await;
+        assert!(out.error.is_none());
+        assert_eq!((out.applied, out.skipped), (0, 3));
+        assert_eq!(out.last_seq, Some(3)); // cursor still advances past them
+        {
+            let c = db.lock().unwrap();
+            assert!(!crate::queries::show_exists(&c, 1).unwrap());
+            assert!(!crate::queries::movie_exists(&c, 50).unwrap());
+        }
+        // an add NEWER than the removal is a deliberate re-add and applies
+        let readd = Op { seq: 4, ts: "2026-07-06T00:00:00Z".into(), entity: "show".into(),
+            entity_id: 1, op: "add".into(), payload: Some(json!({"state": "watching", "src": "tv"})) };
+        let out2 = apply_ops(&db, Some(&tmdb), vec![readd]).await;
+        assert!(out2.error.is_none());
+        assert!(crate::queries::show_exists(&db.lock().unwrap(), 1).unwrap());
     }
 
     #[tokio::test]
