@@ -16,12 +16,12 @@ A local-first TV and movie tracker for people who watch a season at a time.
 
 ---
 
-Most trackers nag you about the latest episode. ShowTrack waits until a whole season has
-finished airing, then surfaces it as ready to binge. One tap marks the season done.
+ShowTrack is built around one idea: you watch a show once its whole season has finished
+airing. So the dashboard waits for the finale, then surfaces the season as ready to binge.
+One tap marks it done, and the Airing page counts down to each finale rather than tracking
+single episodes.
 
-> **Other trackers:** "You are 3 episodes behind on 8 shows."
->
-> **ShowTrack:** "4 seasons are complete and waiting. Tap the ring when you finish one."
+> "4 seasons are complete and waiting. Tap the ring when you finish one."
 
 It runs on your Windows desktop and Android phone from one codebase, keeps everything in a
 local database, and only reaches the internet to fetch show data from
