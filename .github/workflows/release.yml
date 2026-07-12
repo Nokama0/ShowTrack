@@ -9,6 +9,12 @@ on:
     tags: ["v*.*.*"]
   workflow_dispatch:
 
+# re-triggering a dry run cancels the previous one; real tags each have a
+# unique ref so genuine releases never cancel each other
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 

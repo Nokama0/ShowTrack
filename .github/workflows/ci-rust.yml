@@ -1,26 +1,24 @@
-name: CI
+name: CI (rust)
 
+# only runs when the Rust backend changes, so frontend-only pushes
+# do not spend minutes compiling and testing it
 on:
   push:
     branches: [main]
+    paths:
+      - "src-tauri/**"
+      - ".github/workflows/ci-rust.yml"
   pull_request:
+    paths:
+      - "src-tauri/**"
+      - ".github/workflows/ci-rust.yml"
+
+concurrency:
+  group: ci-rust-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-        with:
-          version: 11.1.3
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm check
-
-  rust:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
