@@ -41,11 +41,8 @@
   let dragIdx = $state<number | null>(null);
   let overIdx = $state<number | null>(null);
 
-  function dropOn(to: number) {
-    const from = dragIdx;
-    dragIdx = null;
-    overIdx = null;
-    if (from === null || from === to) return;
+  function reorderVisible(from: number, to: number) {
+    if (from === to) return;
     const visible = links.map((l) => l.href);
     const [moved] = visible.splice(from, 1);
     visible.splice(to, 0, moved);
@@ -53,6 +50,67 @@
     let vi = 0;
     session.navOrder = session.navOrder.map((h) => (visibleSet.has(h) ? visible[vi++] : h));
     api.settingsSet("nav_order", session.navOrder.join(",")).catch(() => {});
+  }
+
+  function dropOn(to: number) {
+    const from = dragIdx;
+    dragIdx = null;
+    overIdx = null;
+    if (from === null) return;
+    reorderVisible(from, to);
+  }
+
+  // tab bar reorder uses pointer events: HTML5 drag does not exist on touch
+  let tDrag = $state<number | null>(null);
+  let tOver = $state<number | null>(null);
+  let tStartX = 0;
+  let tMoved = $state(false);
+  let suppressTap = false;
+
+  function tabIndexFromX(x: number): number | null {
+    const bar = document.querySelector(".tabbar");
+    if (!bar) return null;
+    const anchors = [...bar.querySelectorAll("a")].slice(0, links.length);
+    for (let i = 0; i < anchors.length; i++) {
+      if (x < anchors[i].getBoundingClientRect().right) return i;
+    }
+    return anchors.length - 1;
+  }
+
+  function tabPointerDown(e: PointerEvent, i: number) {
+    if (!session.navReorder || i >= links.length) return;
+    tDrag = i;
+    tOver = null;
+    tStartX = e.clientX;
+    tMoved = false;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function tabPointerMove(e: PointerEvent) {
+    if (tDrag === null) return;
+    if (Math.abs(e.clientX - tStartX) > 8) tMoved = true;
+    if (tMoved) tOver = tabIndexFromX(e.clientX);
+  }
+
+  function tabPointerUp() {
+    if (tDrag === null) return;
+    const from = tDrag;
+    const to = tOver;
+    const moved = tMoved;
+    tDrag = null;
+    tOver = null;
+    tMoved = false;
+    if (moved) {
+      suppressTap = true; // the click that follows must not navigate
+      if (to !== null) reorderVisible(from, to);
+    }
+  }
+
+  function tabClick(e: MouseEvent) {
+    if (suppressTap) {
+      e.preventDefault();
+      suppressTap = false;
+    }
   }
 
   let lastAuto = 0;
@@ -156,9 +214,20 @@
       </a>
     </div>
   </nav>
-  <nav class="tabbar" class:solid={isAndroid} aria-label="Sections, mobile">
-    {#each [...links, settingsLink] as l (l.href)}
-      <a href={l.href} class:on={page.url.pathname === l.href}>
+  <nav class="tabbar" class:solid={isAndroid} class:reorder={session.navReorder} aria-label="Sections, mobile">
+    {#each [...links, settingsLink] as l, i (l.href)}
+      {#if session.navSeparators && i > 0}<span class="tabsep"></span>{/if}
+      <a
+        href={l.href}
+        class:on={page.url.pathname === l.href}
+        class:dragging={tDrag === i && tMoved}
+        class:dropmark={tOver === i && tDrag !== null && tOver !== tDrag}
+        onpointerdown={(e) => tabPointerDown(e, i)}
+        onpointermove={tabPointerMove}
+        onpointerup={tabPointerUp}
+        onpointercancel={tabPointerUp}
+        onclick={tabClick}
+      >
         <span class="ico"><NavIcon name={l.icon} size={22} /></span>{l.label}
       </a>
     {/each}
@@ -234,6 +303,10 @@
   .tabbar a .ico { display: flex; justify-content: center; margin-bottom: 3px; }
   .tabbar a:active { transform: scale(0.92); }
   .tabbar a.on { color: var(--gold); }
+  .tabsep { width: 1px; height: 26px; background: var(--line); align-self: center; flex-shrink: 0; }
+  .tabbar.reorder a { touch-action: none; }
+  .tabbar a.dragging { opacity: 0.35; }
+  .tabbar a.dropmark { box-shadow: inset 2px 0 0 var(--gold); border-radius: 0; }
   @media (max-width: 760px) {
     .dock { display: none; }
     .tabbar { display: flex; }
