@@ -17,6 +17,7 @@ export const session = $state({
   zoom: 100,
   askAddType: false,
   allFirst: false,
+  episodeMode: false,
   tabs: {
     shows: "watching",
     anime: "watching",
@@ -40,6 +41,7 @@ export async function loadSession() {
     session.zoom = Number.isFinite(z) ? Math.min(150, Math.max(80, z)) : 100;
     session.askAddType = s["search_ask_type"] === "1";
     session.allFirst = s["all_first"] === "1";
+    session.episodeMode = s["episode_mode"] === "1";
     const pick = (key: string, allowed: string[], dflt: string) =>
       allowed.includes(s[key]) ? s[key] : dflt;
     session.tabs = {

@@ -88,6 +88,30 @@
       .filter((c) => (filter === "all" ? true : c.myState === filter))
       .toSorted((a, b) => a.name.localeCompare(b.name)),
   );
+  // episode-by-episode mode: anything with an unwatched aired episode is
+  // watchable now, sorted by recent activity; season-readiness stops gating
+  const episodeGrid = $derived(
+    pool
+      .filter(
+        (c) =>
+          (c.myState === "watching" || c.myState === "plan_to_watch") &&
+          c.seriesAired > c.seriesWatchedAired,
+      )
+      .toSorted(byActivity),
+  );
+  const mainGrid = $derived(session.episodeMode ? episodeGrid : grid);
+
+  async function markNext(card: BingeCard) {
+    try {
+      await api.showMarkNext(card.tmdbId);
+      cards = cards.map((x) =>
+        x.tmdbId === card.tmdbId ? { ...x, seriesWatchedAired: x.seriesWatchedAired + 1 } : x,
+      );
+    } catch (e) {
+      session.banner = String(e);
+    }
+  }
+
   let query = $state("");
   const q = $derived(query.trim().toLowerCase());
   // typing searches the whole pool, whatever chip is active
@@ -257,14 +281,18 @@
         </section>
       {/if}
 
-      <h2>Complete seasons <b>ready</b><small>every episode has aired · tap the ring when you finish</small></h2>
-      {#if grid.length === 0 && !hero}
-        <p class="dim">No complete seasons waiting. Check Airing for what's on the way.</p>
+      {#if session.episodeMode}
+        <h2>Ready to <b>watch</b><small>every unwatched aired episode counts</small></h2>
+      {:else}
+        <h2>Complete seasons <b>ready</b><small>every episode has aired · tap the ring when you finish</small></h2>
+      {/if}
+      {#if mainGrid.length === 0 && !hero}
+        <p class="dim">{session.episodeMode ? "Nothing new to watch right now." : "No complete seasons waiting. Check Airing for what's on the way."}</p>
       {:else}
         <div class="grid-cards">
-          {#each grid as c, i (c.tmdbId)}
+          {#each mainGrid as c, i (c.tmdbId)}
             <div class="card rise" style={`animation-delay:${Math.min(i, 12) * 45}ms`}>
-              {#if !marked.has(c.tmdbId)}
+              {#if c.ready && !marked.has(c.tmdbId)}
                 <Ring pct={seriesPct(c)} label={`Mark ${c.name} season ${c.ready!.seasonNumber} watched`} onclick={() => markSeason(c)} />
               {/if}
               <a href={`/show/${c.tmdbId}`}><PosterImg path={c.posterPath} alt={c.name} glow /></a>
@@ -276,9 +304,12 @@
                     <button class="undo prior" onclick={() => markPrevious(c)}>{priorOffer(c)}</button>
                   {/if}
                   <button class="undo" onclick={() => undo(c)}>Undo</button>
-                {:else}
+                {:else if c.ready}
                   <div class="season-line"><b>{seasonLine(c)}</b></div>
                   <span class="badge">{badge(c)}</span>
+                {:else}
+                  <div class="season-line"><b>{c.seriesAired - c.seriesWatchedAired} to watch</b>{#if c.airing}<span class="dim"> · S{c.airing.seasonNumber} airing</span>{/if}</div>
+                  <button class="undo" onclick={() => markNext(c)}>✓ Next episode</button>
                 {/if}
               </div>
             </div>
