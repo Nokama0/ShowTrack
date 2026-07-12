@@ -7,9 +7,9 @@ export interface ChangeEntry {
 // user-facing highlights shown in the "What's new" card after an update.
 export const CHANGELOG: ChangeEntry[] = [
   {
-    version: "0.2.9",
+    version: "0.3.0",
     notes: [
-      "A what's-new card now appears after each update, summarizing the changes.",
+      "A what's-new pop-up now appears after each update, summarizing what changed.",
     ],
   },
   {
