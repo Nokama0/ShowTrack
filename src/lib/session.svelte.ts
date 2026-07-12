@@ -1,4 +1,6 @@
+import { getVersion } from "@tauri-apps/api/app";
 import { api } from "./api";
+import { changesSince, type ChangeEntry } from "./changelog";
 
 export interface Features {
   movies: boolean;
@@ -23,6 +25,7 @@ export const session = $state({
   navOrder: ["/", "/anime", "/airing", "/movies", "/search"] as string[],
   keepSearch: false,
   searchQuery: "", // runtime only: the preserved Search text while keepSearch is on
+  whatsNew: [] as ChangeEntry[], // changelog entries to show after a version change
   tiles: { shows: 180, anime: 180, movies: 170 } as Record<"shows" | "anime" | "movies", number>,
   tabs: {
     shows: "watching",
@@ -79,6 +82,18 @@ export async function loadSession() {
       hero: on("feat_hero"),
       airingRail: on("feat_airing_rail"),
     };
+    // show the changelog once when the running version is newer than last seen.
+    // A fresh install (no last_seen) just records the version silently.
+    try {
+      const current = await getVersion();
+      const lastSeen = s["last_seen_version"] ?? "";
+      if (session.hasKey && lastSeen && lastSeen !== current) {
+        session.whatsNew = changesSince(lastSeen, current);
+      }
+      if (lastSeen !== current) await api.settingsSet("last_seen_version", current);
+    } catch {
+      // getVersion only works inside the app; ignore elsewhere
+    }
   } catch (e) {
     session.banner = `Failed to load settings: ${e}`;
   } finally {
