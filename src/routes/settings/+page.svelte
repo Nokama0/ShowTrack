@@ -4,6 +4,7 @@
   import { open, save } from "@tauri-apps/plugin-dialog";
   import { api } from "$lib/api";
   import { session, type Features } from "$lib/session.svelte";
+  import { changelogFor } from "$lib/changelog";
   import { isAndroid } from "$lib/platform";
   import { getVersion } from "@tauri-apps/api/app";
   import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -66,6 +67,10 @@
       updMsg = String(e);
       updInstalling = false;
     }
+  }
+
+  function openWhatsNew() {
+    session.whatsNew = changelogFor(appVersion);
   }
 
   async function togglePref(key: string, field: "askAddType" | "allFirst" | "episodeMode" | "navReorder" | "navSeparators" | "keepSearch", on: boolean) {
@@ -674,6 +679,10 @@
             </div>
           {/if}
         {/if}
+        <div class="row" style="align-items:center">
+          <span class="rowlabel">What's new</span>
+          <button class="btn-ghost" onclick={openWhatsNew} disabled={!appVersion}>Show</button>
+        </div>
         {#if cache}
           <p class="dim cacheline">Image cache · {cache.path} · {mb(cache.bytes)} MB</p>
         {/if}

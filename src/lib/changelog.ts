@@ -75,3 +75,10 @@ function cmp(a: string, b: string): number {
 export function changesSince(since: string, current: string): ChangeEntry[] {
   return CHANGELOG.filter((e) => cmp(e.version, since) > 0 && cmp(e.version, current) <= 0);
 }
+
+/** The notes for a specific version, for re-opening the pop-up on demand;
+ *  falls back to the newest entry if that version has none. */
+export function changelogFor(version: string): ChangeEntry[] {
+  const m = CHANGELOG.filter((e) => e.version === version);
+  return m.length ? m : CHANGELOG.slice(0, 1);
+}
