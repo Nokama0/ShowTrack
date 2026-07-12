@@ -9,7 +9,7 @@
   <span class="dim lbl">Tiles</span>
   <input
     type="range"
-    min="120"
+    min="80"
     max="260"
     step="10"
     bind:value={session.tiles[section]}
