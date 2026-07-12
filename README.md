@@ -12,6 +12,8 @@ A local-first TV and movie tracker for people who watch a season at a time.
 ![Your data](https://img.shields.io/badge/Your%20data-100%25%20local-FFCF6E?labelColor=0E0F13&style=flat)
 ![License](https://img.shields.io/badge/License-MIT-FFCF6E?labelColor=0E0F13&style=flat)
 
+<img src=".github/hero.png" width="100%" alt="ShowTrack's season-first dashboard: an Up Next pick, a row of complete seasons ready to binge, and an Airing Now column counting down to each finale" />
+
 </div>
 
 ---
