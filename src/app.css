@@ -21,13 +21,17 @@
    scrollbar-gutter keeps the scrollbar's lane reserved, so it appearing
    (long pages) or hiding (modal scroll lock) never shifts the layout */
 html { overflow-x: clip; scrollbar-gutter: stable; }
+/* mobile: hide the scrollbar entirely. The overlay indicator paints above
+   the fixed tab bar and cannot be layered under it. Keyed off a deterministic
+   Android flag (set in app.html) because S-Pen devices report a fine/hover
+   pointer, making the pointer media query unreliable. High specificity so it
+   beats the desktop custom-scrollbar rule even if that query also matches. */
+:root[data-mobile] { scrollbar-gutter: auto; }
+:root[data-mobile], :root[data-mobile] * { scrollbar-width: none; -ms-overflow-style: none; }
+:root[data-mobile] ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }
 /* custom scrollbar in place of the Windows default: slim, dark, on-theme.
    desktop only; styling it on Android would turn the overlay bar into a
    space-taking classic one */
-@media (hover: none), (pointer: coarse) {
-  * { scrollbar-width: none; }
-  ::-webkit-scrollbar { width: 0; height: 0; display: none; }
-}
 @media (hover: hover) and (pointer: fine) {
   ::-webkit-scrollbar { width: 12px; height: 12px; }
   ::-webkit-scrollbar-track { background: transparent; }
