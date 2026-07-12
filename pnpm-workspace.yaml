@@ -1,2 +1,6 @@
 allowBuilds:
   esbuild: true
+# force the transitive cookie past the <0.7.0 advisory (GHSA out-of-bounds chars);
+# the app is adapter-static with no server, so cookie is never used at runtime
+overrides:
+  cookie: ">=0.7.0"
