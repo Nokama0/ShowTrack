@@ -1,5 +1,8 @@
 version: 2
 updates:
+  # routine updates only propose minor/patch bumps; majors (and rand, whose
+  # 0.x churn breaks the token/code generation) are held for a deliberate,
+  # verified migration. Security updates ignore these rules and still come through.
   - package-ecosystem: cargo
     directory: /src-tauri
     schedule:
@@ -8,6 +11,10 @@ updates:
     groups:
       cargo:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "rand"
 
   - package-ecosystem: npm
     directory: /
@@ -17,6 +24,9 @@ updates:
     groups:
       npm:
         patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /

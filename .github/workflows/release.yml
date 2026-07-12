@@ -115,8 +115,8 @@ jobs:
           path: dist/*
 
   publish:
-    # only real tag pushes publish a release; workflow_dispatch stops at artifacts
-    if: startsWith(github.ref, 'refs/tags/')
+    # a tag push publishes the real release; a manual run publishes a DRAFT
+    # (safe to delete) so the whole pipeline, publishing included, is testable
     needs: [windows, android]
     runs-on: ubuntu-latest
     steps:
@@ -127,4 +127,7 @@ jobs:
         with:
           files: assets/**/*
           fail_on_unmatched_files: true
-          generate_release_notes: true
+          draft: ${{ github.ref_type != 'tag' }}
+          generate_release_notes: ${{ github.ref_type == 'tag' }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'dry-run' }}
+          name: ${{ github.ref_type == 'tag' && github.ref_name || 'Dry run (draft, safe to delete)' }}
