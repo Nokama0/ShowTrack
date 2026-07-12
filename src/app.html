@@ -4,6 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>ShowTrack</title>
+    <script>
+      // deterministic mobile flag (S-Pen devices report hover/fine, so the
+      // pointer media query is unreliable for this); set before first paint
+      if (navigator.userAgent.includes("Android")) document.documentElement.dataset.mobile = "";
+    </script>
     %sveltekit.head%
   </head>
   <body style="background:#0e0f13" data-sveltekit-preload-data="hover">
