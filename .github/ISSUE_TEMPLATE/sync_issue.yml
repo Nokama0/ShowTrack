@@ -1,0 +1,71 @@
+name: Sync & pairing issue
+description: Problems pairing the phone with the desktop, or library changes not syncing.
+title: "[Sync]: "
+labels: ["bug", "sync"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Sync runs over your local network while the desktop app is open. These details make sync issues far easier to trace.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What went wrong?
+      description: What did you try, and what happened instead?
+      placeholder: The phone shows "Desktop not reachable" even though the desktop app is open.
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where does it break?
+      options:
+        - Pairing (entering the code)
+        - First sync after pairing (the big copy)
+        - An ongoing sync (a change did not carry over)
+        - Unpairing
+    validations:
+      required: true
+  - type: dropdown
+    id: direction
+    attributes:
+      label: Which way was the change made?
+      description: On which device did you make the change that failed to sync?
+      options:
+        - On the desktop, missing on the phone
+        - On the phone, missing on the desktop
+        - Not applicable
+    validations:
+      required: false
+  - type: input
+    id: desktop-version
+    attributes:
+      label: Desktop version
+      placeholder: "0.2.7"
+    validations:
+      required: true
+  - type: input
+    id: phone-version
+    attributes:
+      label: Phone version
+      placeholder: "0.2.7"
+    validations:
+      required: true
+  - type: textarea
+    id: banner
+    attributes:
+      label: Exact error or banner text
+      description: Copy any message shown on either device.
+    validations:
+      required: false
+  - type: checkboxes
+    id: network
+    attributes:
+      label: Network checks
+      options:
+        - label: Both devices are on the same Wi-Fi network.
+          required: false
+        - label: The desktop app was open and running when I tried to sync.
+          required: false
+        - label: Sync is turned on in the desktop's Settings.
+          required: false
