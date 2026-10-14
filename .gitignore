@@ -13,3 +13,4 @@ node_modules
 # local working material, not for the public repo
 /design-previews/
 /docs/
+/CLAUDE.md
