@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { session } from "$lib/session.svelte";
+  import { session } from "#lib/session.svelte.js";
 
   const latest = $derived(session.whatsNew[0]?.version ?? "");
   const multi = $derived(session.whatsNew.length > 1);

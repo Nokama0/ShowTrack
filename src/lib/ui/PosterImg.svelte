@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { imgUrl } from "$lib/api";
+  import { imgUrl } from "#lib/api.js";
   let {
     path,
     size = "w342",

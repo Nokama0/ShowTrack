@@ -1,15 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { api } from "$lib/api";
-  import { session } from "$lib/session.svelte";
-  import type { MovieRow } from "$lib/types";
-  import BingeBoard from "$lib/ui/BingeBoard.svelte";
-  import PosterImg from "$lib/ui/PosterImg.svelte";
-  import MovieSheet from "$lib/ui/MovieSheet.svelte";
+  import { api } from "#lib/api.js";
+  import { session } from "#lib/session.svelte.js";
+  import type { MovieRow } from "#lib/types.js";
+  import BingeBoard from "#lib/ui/BingeBoard.svelte";
+  import PosterImg from "#lib/ui/PosterImg.svelte";
+  import MovieSheet from "#lib/ui/MovieSheet.svelte";
 
   $effect(() => {
-    if (!session.features.animePage) goto("/", { replaceState: true });
+    if (!session.features.animePage) goto("/", { replace: true });
   });
 
   // one-time backfill: existing libraries predate the anime flag

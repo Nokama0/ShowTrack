@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { api } from "$lib/api";
-  import { session } from "$lib/session.svelte";
+  import { api } from "#lib/api.js";
+  import { session } from "#lib/session.svelte.js";
 
   let key = $state("");
   let checking = $state(false);

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { api } from "$lib/api";
-  import type { SearchItem, TitlePreview } from "$lib/types";
+  import { api } from "#lib/api.js";
+  import type { SearchItem, TitlePreview } from "#lib/types.js";
   import PosterImg from "./PosterImg.svelte";
 
   let { item, added, onadd, onclose }: {

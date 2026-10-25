@@ -1,16 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import { api } from "$lib/api";
-  import { session } from "$lib/session.svelte";
-  import type { MovieRow } from "$lib/types";
-  import PosterImg from "$lib/ui/PosterImg.svelte";
-  import Select from "$lib/ui/Select.svelte";
-  import MovieSheet from "$lib/ui/MovieSheet.svelte";
-  import TileSlider from "$lib/ui/TileSlider.svelte";
+  import { api } from "#lib/api.js";
+  import { session } from "#lib/session.svelte.js";
+  import type { MovieRow } from "#lib/types.js";
+  import PosterImg from "#lib/ui/PosterImg.svelte";
+  import Select from "#lib/ui/Select.svelte";
+  import MovieSheet from "#lib/ui/MovieSheet.svelte";
+  import TileSlider from "#lib/ui/TileSlider.svelte";
 
   $effect(() => {
-    if (!session.features.movies) goto("/", { replaceState: true });
+    if (!session.features.movies) goto("/", { replace: true });
   });
 
   let movies = $state<MovieRow[]>([]);

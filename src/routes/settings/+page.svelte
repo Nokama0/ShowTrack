@@ -2,13 +2,13 @@
   import { onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
   import { open, save } from "@tauri-apps/plugin-dialog";
-  import { api } from "$lib/api";
-  import { session, type Features } from "$lib/session.svelte";
-  import { changelogFor } from "$lib/changelog";
-  import { isAndroid } from "$lib/platform";
+  import { api } from "#lib/api.js";
+  import { session, type Features } from "#lib/session.svelte.js";
+  import { changelogFor } from "#lib/changelog.js";
+  import { isAndroid } from "#lib/platform.js";
   import { getVersion } from "@tauri-apps/api/app";
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  import type { CacheInfo, ImportProgress, ImportReport, RefreshSummary, SyncServerStatus, SyncStatus, UpdateInfo } from "$lib/types";
+  import type { CacheInfo, ImportProgress, ImportReport, RefreshSummary, SyncServerStatus, SyncStatus, UpdateInfo } from "#lib/types.js";
 
   let key = $state("");
   let keyStatus = $state("");

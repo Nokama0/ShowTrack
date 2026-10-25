@@ -2,12 +2,12 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { appConfirm } from "$lib/dialog.svelte";
-  import { api, imgUrl } from "$lib/api";
-  import { fmtRuntime, relDays } from "$lib/format";
-  import type { EpisodeRow, ShowDetail } from "$lib/types";
-  import PosterImg from "$lib/ui/PosterImg.svelte";
-  import Select from "$lib/ui/Select.svelte";
+  import { appConfirm } from "#lib/dialog.svelte.js";
+  import { api, imgUrl } from "#lib/api.js";
+  import { fmtRuntime, relDays } from "#lib/format.js";
+  import type { EpisodeRow, ShowDetail } from "#lib/types.js";
+  import PosterImg from "#lib/ui/PosterImg.svelte";
+  import Select from "#lib/ui/Select.svelte";
 
   let detail = $state<ShowDetail | null>(null);
   let error = $state("");
@@ -151,7 +151,7 @@
       await api.showRemove(id);
       // land back wherever the user came from (Anime, Search, Shows...)
       if (history.length > 1) history.back();
-      else goto("/", { replaceState: true });
+      else goto("/", { replace: true });
     } catch (e) {
       actionError = String(e);
     }

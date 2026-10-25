@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { api } from "$lib/api";
-  import { session } from "$lib/session.svelte";
+  import { api } from "#lib/api.js";
+  import { session } from "#lib/session.svelte.js";
 
   let { section }: { section: "shows" | "anime" | "movies" } = $props();
 </script>
