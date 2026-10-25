@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from "#lib/api.js";
   import { session } from "#lib/session.svelte.js";
+  import { isAndroid } from "#lib/platform.js";
 
   let key = $state("");
   let checking = $state(false);
@@ -37,7 +38,11 @@
     <button class="btn-gold" onclick={validate} disabled={checking || key.trim() === ""}>
       {checking ? "Checking…" : "Validate & save"}
     </button>
-    <p class="dim">Next step: import your TV Time export from the Settings page.</p>
+    {#if isAndroid}
+      <p class="dim">Next step: to bring your desktop library over, pair from Settings › Sync with desktop.</p>
+    {:else}
+      <p class="dim">Next step: import your TV Time export from the Settings page.</p>
+    {/if}
   </div>
 </div>
 
