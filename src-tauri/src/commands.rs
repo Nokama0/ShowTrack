@@ -482,10 +482,12 @@ pub struct SyncServerStatus {
     pub port: u16,
     pub paired_device: Option<String>,
     pub last_push_at: Option<String>,
+    pub start_error: Option<String>,
 }
 
 async fn server_status(state: &State<'_, AppState>) -> CmdResult<SyncServerStatus> {
     let running = state.sync_server.lock().unwrap().is_some();
+    let start_error = state.sync_start_error.lock().unwrap().clone();
     let st = with_db(&state.db, |c| {
         Ok((
             crate::oplog::sync_get(c, "sync_enabled")?.is_some_and(|v| v == "1"),
@@ -495,7 +497,7 @@ async fn server_status(state: &State<'_, AppState>) -> CmdResult<SyncServerStatu
         ))
     }).await.map_err(|e| e.to_string())?;
     Ok(SyncServerStatus {
-        running, enabled: st.0, port: st.1, paired_device: st.2, last_push_at: st.3,
+        running, enabled: st.0, port: st.1, paired_device: st.2, last_push_at: st.3, start_error,
     })
 }
 
@@ -511,6 +513,7 @@ pub async fn sync_server_set(state: State<'_, AppState>, enabled: bool, port: u1
         crate::oplog::sync_set(c, "sync_enabled", if enabled { "1" } else { "0" })?;
         crate::oplog::sync_set(c, "sync_port", &port.to_string())
     }).await.map_err(|e| e.to_string())?;
+    *state.sync_start_error.lock().unwrap() = None; // superseded; failures here return Err
     // stop whatever is running, and wait for the listener to actually close
     // before rebinding, so a same-port restart never races the old socket.
     let old = state.sync_server.lock().unwrap().take();

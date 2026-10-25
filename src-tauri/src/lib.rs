@@ -26,6 +26,8 @@ pub struct AppState {
     pub busy: Arc<AtomicBool>,
     pub sync_shared: Arc<sync_server::SyncShared>,
     pub sync_server: Arc<Mutex<Option<sync_server::SyncServerHandle>>>,
+    /// Why the launch-time server start failed (e.g. port taken), for Settings.
+    pub sync_start_error: Arc<Mutex<Option<String>>>,
     pub backups_dir: std::path::PathBuf,
 }
 
@@ -48,6 +50,7 @@ pub fn run() {
                 busy: Arc::new(AtomicBool::new(false)),
                 sync_shared: Arc::new(sync_server::SyncShared { pair: Mutex::new(None) }),
                 sync_server: Arc::new(Mutex::new(None)),
+                sync_start_error: Arc::new(Mutex::new(None)),
                 backups_dir: data_dir.join("backups"),
             });
             // safety net: show the window even if page load never fires
@@ -88,9 +91,12 @@ pub fn run() {
                         shared: state.sync_shared.clone(), backups_dir: state.backups_dir.clone(),
                     });
                     let handle_slot = state.sync_server.clone();
+                    let error_slot = state.sync_start_error.clone();
                     tauri::async_runtime::spawn(async move {
-                        if let Ok(h) = sync_server::start(ctx, port).await {
-                            *handle_slot.lock().unwrap() = Some(h);
+                        match sync_server::start(ctx, port).await {
+                            Ok(h) => *handle_slot.lock().unwrap() = Some(h),
+                            // stays enabled so the next launch retries
+                            Err(e) => *error_slot.lock().unwrap() = Some(e.to_string()),
                         }
                     });
                 }

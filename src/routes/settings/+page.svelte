@@ -595,6 +595,11 @@
                 <input style="width:110px" type="number" bind:value={syncPort} min="1024" max="65535" />
                 <button class="btn-ghost" onclick={applyPort} disabled={!sync.enabled}>Apply port</button>
               </div>
+              {#if sync.enabled && !sync.running && sync.startError}
+                <p style="color:var(--red)">
+                  Sync could not start ({sync.startError}). Pick another port and press Apply port.
+                </p>
+              {/if}
               {#if sync.running}
                 <div class="row" style="align-items:center">
                   <button class="btn-ghost" onclick={showCode}>Show pairing code</button>

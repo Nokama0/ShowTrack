@@ -189,6 +189,7 @@ export interface SyncServerStatus {
   port: number;
   pairedDevice: string | null;
   lastPushAt: string | null;
+  startError: string | null;
 }
 
 export interface SyncSummary {
