@@ -79,6 +79,8 @@
           at = { season: e.seasonNumber, episode: e.episodeNumber };
         }
     await safely(() => api.episodeMark(epId, watched));
+    // the backend starts a planned show on its first watch; this toggle skips the reload
+    if (!actionError && watched && detail.show.myState === "plan_to_watch") detail.show.myState = "watching";
     epPrompt = null;
     if (!actionError && watched && at && at.season > 0) {
       const count = unwatchedAiredBefore(at.season, at.episode);

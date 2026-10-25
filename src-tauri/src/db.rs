@@ -118,6 +118,21 @@ fn init(conn: &Connection) -> Result<()> {
         conn.execute_batch("ALTER TABLE movies ADD COLUMN is_anime INTEGER NOT NULL DEFAULT 0;")?;
         conn.pragma_update(None, "user_version", 4)?;
     }
+    if v < 5 {
+        // 2026-10-26: marking episodes never started a planned show. Repair the
+        // shows that left stranded; imported watches keep TV Time's own state.
+        let stranded: Vec<i64> = conn.prepare(
+            "SELECT s.tmdb_id FROM shows s WHERE s.my_state='plan_to_watch' AND EXISTS
+               (SELECT 1 FROM episode_watches w JOIN episodes e ON e.tmdb_id=w.episode_tmdb_id
+                WHERE e.show_tmdb_id=s.tmdb_id AND w.source='app')")?
+            .query_map([], |r| r.get(0))?
+            .collect::<std::result::Result<_, _>>()?;
+        let now = chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+        for id in stranded {
+            crate::oplog::show_set_state(conn, id, "watching", &now)?;
+        }
+        conn.pragma_update(None, "user_version", 5)?;
+    }
     Ok(())
 }
 
@@ -145,7 +160,7 @@ mod tests {
     fn migrates_to_v2_with_oplog_and_device_id() {
         let conn = open_memory().unwrap();
         let v: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-        assert_eq!(v, 4); // cascades through v4 (movie is_anime) in one pass
+        assert_eq!(v, 5); // cascades through v5 (planned-show repair) in one pass
         let n: i64 = conn.query_row(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('oplog','sync_state')",
             [], |r| r.get(0)).unwrap();
@@ -164,5 +179,28 @@ mod tests {
              DELETE FROM shows WHERE tmdb_id=1;").unwrap();
         let n: i64 = conn.query_row("SELECT COUNT(*) FROM episode_watches", [], |r| r.get(0)).unwrap();
         assert_eq!(n, 0);
+    }
+
+    #[test]
+    fn v5_moves_planned_shows_with_app_watches_to_watching() {
+        let conn = open_memory().unwrap();
+        conn.execute_batch(
+            "INSERT INTO shows(tmdb_id,name,my_state,added_at) VALUES
+               (1,'App','plan_to_watch','2026-01-01T00:00:00Z'),
+               (2,'Imported','plan_to_watch','2026-01-01T00:00:00Z'),
+               (3,'Unwatched','plan_to_watch','2026-01-01T00:00:00Z'),
+               (4,'Stopped','stopped','2026-01-01T00:00:00Z');
+             INSERT INTO episodes(tmdb_id,show_tmdb_id,season_number,episode_number) VALUES
+               (10,1,1,1),(20,2,1,1),(30,3,1,1),(40,4,1,1);
+             INSERT INTO episode_watches(episode_tmdb_id,watched_at,source) VALUES
+               (10,NULL,'app'),(20,NULL,'import'),(40,NULL,'app');
+             PRAGMA user_version=4;").unwrap();
+        init(&conn).unwrap();
+        let states: Vec<String> = conn.prepare("SELECT my_state FROM shows ORDER BY tmdb_id").unwrap()
+            .query_map([], |r| r.get(0)).unwrap().map(|r| r.unwrap()).collect();
+        assert_eq!(states, ["watching", "plan_to_watch", "plan_to_watch", "stopped"]);
+        let ops = crate::oplog::ops_since(&conn, 0).unwrap();
+        assert_eq!(ops.len(), 1); // the repair syncs to the paired device
+        assert_eq!((ops[0].entity_id, ops[0].op.as_str()), (1, "state"));
     }
 }

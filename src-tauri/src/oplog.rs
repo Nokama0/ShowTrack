@@ -142,6 +142,18 @@ fn log_watches(conn: &Connection, ids: &[i64], now: &str) -> Result<()> {
     Ok(())
 }
 
+/// Watching an episode starts a planned show, so it moves to Watching; logged
+/// so the paired device follows. Stopped stays: that state is the user's call.
+fn start_if_planned(conn: &Connection, show_id: i64, now: &str) -> Result<()> {
+    let planned: bool = conn.query_row(
+        "SELECT my_state='plan_to_watch' FROM shows WHERE tmdb_id=?1", [show_id], |r| r.get(0))
+        .optional()?.unwrap_or(false);
+    if planned {
+        show_set_state(conn, show_id, "watching", now)?;
+    }
+    Ok(())
+}
+
 fn log_unwatches(conn: &Connection, ids: &[i64], now: &str) -> Result<()> {
     for id in ids {
         append(conn, "ep", *id, "unwatch", None, now)?;
@@ -153,7 +165,10 @@ pub fn episode_mark(conn: &Connection, ep_id: i64, watched: bool, now: &str) -> 
     let was = is_watched(conn, ep_id)?;
     crate::queries::set_episode_watched(conn, ep_id, watched, now)?;
     match (was, watched) {
-        (false, true) => log_watches(conn, &[ep_id], now),
+        (false, true) => {
+            log_watches(conn, &[ep_id], now)?;
+            start_if_planned(conn, show_of_episode(conn, ep_id)?, now)
+        }
         (true, false) => log_unwatches(conn, &[ep_id], now),
         _ => Ok(()), // no state change (INSERT OR IGNORE / DELETE of nothing): no op
     }
@@ -168,6 +183,9 @@ pub fn season_mark_collect(conn: &Connection, show_id: i64, season: i64,
                            today: &str, now: &str) -> Result<Vec<i64>> {
     let ids = crate::queries::mark_season_collect(conn, show_id, season, today, now)?;
     log_watches(conn, &ids, now)?;
+    if !ids.is_empty() {
+        start_if_planned(conn, show_id, now)?;
+    }
     Ok(ids)
 }
 
@@ -187,6 +205,9 @@ pub fn seasons_mark_before(conn: &Connection, show_id: i64, season: i64,
                            today: &str, now: &str) -> Result<Vec<i64>> {
     let ids = crate::queries::mark_seasons_before(conn, show_id, season, today, now)?;
     log_watches(conn, &ids, now)?;
+    if !ids.is_empty() {
+        start_if_planned(conn, show_id, now)?;
+    }
     Ok(ids)
 }
 
@@ -194,6 +215,9 @@ pub fn episodes_mark_before(conn: &Connection, show_id: i64, season: i64, episod
                             today: &str, now: &str) -> Result<Vec<i64>> {
     let ids = crate::queries::mark_episodes_before(conn, show_id, season, episode, today, now)?;
     log_watches(conn, &ids, now)?;
+    if !ids.is_empty() {
+        start_if_planned(conn, show_id, now)?;
+    }
     Ok(ids)
 }
 
@@ -205,7 +229,11 @@ pub fn mark_all_aired(conn: &Connection, show_id: i64, today: &str, now: &str) -
         .query_map(rusqlite::params![show_id, today], |r| r.get(0))?
         .collect::<std::result::Result<_, _>>()?;
     crate::queries::mark_all_aired(conn, show_id, today, now)?;
-    log_watches(conn, &ids, now)
+    log_watches(conn, &ids, now)?;
+    if !ids.is_empty() {
+        start_if_planned(conn, show_id, now)?;
+    }
+    Ok(())
 }
 
 pub fn show_set_state(conn: &Connection, id: i64, state: &str, now: &str) -> Result<()> {
@@ -612,6 +640,47 @@ mod tests {
         let ops = ops_since(&conn, 0).unwrap();
         assert_eq!(ops.len(), 1);
         assert_eq!((ops[0].entity.as_str(), ops[0].op.as_str()), ("ep", "watch"));
+    }
+
+    fn show_state(c: &Connection) -> String {
+        c.query_row("SELECT my_state FROM shows WHERE tmdb_id=1", [], |r| r.get(0)).unwrap()
+    }
+
+    #[test]
+    fn every_app_mark_moves_a_planned_show_to_watching() {
+        let paths: [fn(&Connection) -> Result<()>; 5] = [
+            |c| episode_mark(c, 10, true, NOW),
+            |c| season_mark_collect(c, 1, 1, TODAY, NOW).map(|_| ()),
+            |c| seasons_mark_before(c, 1, 2, TODAY, NOW).map(|_| ()),
+            |c| episodes_mark_before(c, 1, 1, 2, TODAY, NOW).map(|_| ()),
+            |c| mark_all_aired(c, 1, TODAY, NOW),
+        ];
+        for (i, mark) in paths.iter().enumerate() {
+            let conn = crate::db::open_memory().unwrap();
+            fixture(&conn);
+            conn_exec(&conn, "UPDATE shows SET my_state='plan_to_watch' WHERE tmdb_id=1");
+            mark(&conn).unwrap();
+            assert_eq!(show_state(&conn), "watching", "path {i}");
+            // logged, so the paired device moves the show too
+            let ops = ops_since(&conn, 0).unwrap();
+            assert!(ops.iter().any(|o| (o.entity.as_str(), o.entity_id, o.op.as_str()) == ("show", 1, "state")
+                && o.payload.as_ref().unwrap()["state"] == "watching"), "path {i}");
+        }
+    }
+
+    #[test]
+    fn marks_leave_stopped_shows_and_no_op_marks_alone() {
+        let conn = crate::db::open_memory().unwrap();
+        fixture(&conn);
+        conn_exec(&conn, "UPDATE shows SET my_state='stopped' WHERE tmdb_id=1");
+        episode_mark(&conn, 10, true, NOW).unwrap();
+        assert_eq!(show_state(&conn), "stopped");
+        conn_exec(&conn, "UPDATE shows SET my_state='plan_to_watch' WHERE tmdb_id=1");
+        episode_mark(&conn, 10, true, NOW).unwrap();  // already watched: nothing new
+        episode_mark(&conn, 11, false, NOW).unwrap(); // unmark
+        assert!(season_mark_collect(&conn, 1, 2, "2026-06-01", NOW).unwrap().is_empty()); // S2 not aired yet
+        assert_eq!(show_state(&conn), "plan_to_watch");
+        assert!(!ops_since(&conn, 0).unwrap().iter().any(|o| o.op == "state"));
     }
 
     #[test]
