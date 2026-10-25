@@ -27,7 +27,8 @@ pub async fn pair(http: &reqwest::Client, db: &Arc<Mutex<rusqlite::Connection>>,
         .json(&PairRequest { device_id, code: code.to_string() })
         .send().await.map_err(|e| AppError::msg(format!("desktop unreachable: {e}")))?;
     if resp.status().as_u16() == 403 {
-        return Err(AppError::msg("wrong or expired pairing code"));
+        return Err(AppError::msg(
+            "wrong or expired pairing code (5 wrong tries cancel it: show a new code on the desktop)"));
     }
     let resp = resp.error_for_status().map_err(|e| AppError::msg(e.to_string()))?;
     let pr: PairResponse = resp.json().await.map_err(|e| AppError::msg(e.to_string()))?;

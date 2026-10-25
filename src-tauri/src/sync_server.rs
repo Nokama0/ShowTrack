@@ -22,7 +22,12 @@ use crate::sync_proto::*;
 pub struct PairCode {
     pub code: String,
     pub expires: Instant,
+    pub misses: u32,
 }
+
+/// Wrong guesses a code survives. Without a cap, 10^6 codes over a 5-minute
+/// window are brute-forceable on the LAN; burning the code forces a new click.
+pub const MAX_PAIR_MISSES: u32 = 5;
 
 pub struct SyncShared {
     pub pair: Mutex<Option<PairCode>>,
@@ -52,6 +57,7 @@ pub fn new_pair_code(shared: &Arc<SyncShared>) -> String {
     *shared.pair.lock().unwrap() = Some(PairCode {
         code: code.clone(),
         expires: Instant::now() + Duration::from_secs(300),
+        misses: 0,
     });
     code
 }
@@ -76,12 +82,18 @@ async fn check_auth(ctx: &ServerCtx, headers: &axum::http::HeaderMap) -> std::re
 async fn pair(State(ctx): State<Arc<ServerCtx>>, Json(req): Json<PairRequest>) -> Response {
     {
         let mut slot = ctx.shared.pair.lock().unwrap();
-        let ok = match slot.as_ref() {
-            Some(p) => p.expires > Instant::now()
-                && req.code.as_bytes().ct_eq(p.code.as_bytes()).unwrap_u8() == 1,
-            None => false,
+        let ok = match slot.as_mut() {
+            Some(p) if p.expires > Instant::now() => {
+                let hit = req.code.as_bytes().ct_eq(p.code.as_bytes()).unwrap_u8() == 1;
+                if !hit { p.misses += 1; }
+                hit
+            }
+            _ => false,
         };
         if !ok {
+            if slot.as_ref().is_some_and(|p| p.misses >= MAX_PAIR_MISSES) {
+                *slot = None;
+            }
             return err(StatusCode::FORBIDDEN, "wrong or expired pairing code");
         }
         *slot = None; // one use
@@ -227,6 +239,24 @@ mod tests {
         ctx.shared.pair.lock().unwrap().as_mut().unwrap().expires =
             std::time::Instant::now() - std::time::Duration::from_secs(1);
         assert_eq!(app.clone().oneshot(req(&code)).await.unwrap().status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn repeated_wrong_guesses_burn_the_pairing_code() {
+        let ctx = test_ctx();
+        let app = router(ctx.clone());
+        let req = |code: &str| Request::post("/sync/v1/pair")
+            .header("content-type", "application/json")
+            .body(Body::from(format!(r#"{{"device_id":"phone1","code":"{code}"}}"#))).unwrap();
+        let good = new_pair_code(&ctx.shared);
+        let wrong = if good == "000000" { "111111" } else { "000000" };
+        for _ in 0..MAX_PAIR_MISSES {
+            assert_eq!(app.clone().oneshot(req(wrong)).await.unwrap().status(), StatusCode::FORBIDDEN);
+        }
+        // the code is gone: even the right one needs a fresh code now
+        assert_eq!(app.clone().oneshot(req(&good)).await.unwrap().status(), StatusCode::FORBIDDEN);
+        let fresh = new_pair_code(&ctx.shared);
+        assert_eq!(app.clone().oneshot(req(&fresh)).await.unwrap().status(), StatusCode::OK);
     }
 
     #[tokio::test]
