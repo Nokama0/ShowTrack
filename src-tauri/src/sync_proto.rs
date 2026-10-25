@@ -111,14 +111,15 @@ pub fn build_snapshot(conn: &Connection) -> Result<Snapshot> {
     })
 }
 
-/// Merge a snapshot's library with no sync bookkeeping: metadata upserts
-/// always; user state and watches only for entities this DB does not already
-/// have (mirrors re-import semantics). Also the backup-restore path.
-pub fn apply_library(conn: &Connection, snap: &Snapshot) -> Result<(usize, usize)> {
-    let tx = conn.unchecked_transaction()?;
-    let (mut new_shows, mut new_movies) = (0usize, 0usize);
+/// Ids a merge newly inserted; rows that already existed are not listed.
+struct Merged { shows: Vec<i64>, watches: Vec<i64>, movies: Vec<i64> }
+
+/// Merge a snapshot's library: metadata upserts always; user state and watches
+/// only for entities this DB does not already have (mirrors re-import semantics).
+fn merge_library(tx: &Connection, snap: &Snapshot) -> Result<Merged> {
+    let mut merged = Merged { shows: Vec::new(), watches: Vec::new(), movies: Vec::new() };
     for s in &snap.shows {
-        let existed = crate::queries::show_exists(&tx, s.tmdb_id)?;
+        let existed = crate::queries::show_exists(tx, s.tmdb_id)?;
         tx.execute(
             "INSERT INTO shows(tmdb_id,tvdb_id,imdb_id,name,year,poster_path,backdrop_path,
                                overview,tmdb_status,my_state,is_favorite,is_anime,added_at,last_refreshed_at)
@@ -127,11 +128,11 @@ pub fn apply_library(conn: &Connection, snap: &Snapshot) -> Result<(usize, usize
                tvdb_id=COALESCE(excluded.tvdb_id,tvdb_id), imdb_id=COALESCE(excluded.imdb_id,imdb_id),
                name=excluded.name, year=excluded.year, poster_path=excluded.poster_path,
                backdrop_path=excluded.backdrop_path, overview=excluded.overview,
-               tmdb_status=excluded.tmdb_status, is_anime=excluded.is_anime",
+               tmdb_status=excluded.tmdb_status, is_anime=MAX(is_anime, excluded.is_anime)",
             params![s.tmdb_id, s.tvdb_id, s.imdb_id, s.name, s.year, s.poster_path,
                     s.backdrop_path, s.overview, s.tmdb_status, s.my_state, s.is_favorite,
                     s.is_anime, s.added_at, s.last_refreshed_at])?;
-        if !existed { new_shows += 1; }
+        if !existed { merged.shows.push(s.tmdb_id); }
     }
     for e in &snap.episodes {
         tx.execute(
@@ -147,13 +148,14 @@ pub fn apply_library(conn: &Connection, snap: &Snapshot) -> Result<(usize, usize
                     e.air_date, e.runtime, e.still_path, e.overview])?;
     }
     for w in &snap.watches {
-        tx.execute(
+        let inserted = tx.execute(
             "INSERT OR IGNORE INTO episode_watches(episode_tmdb_id,watched_at,source)
              VALUES(?1,?2,?3)",
             params![w.episode_tmdb_id, w.watched_at, w.source])?;
+        if inserted == 1 { merged.watches.push(w.episode_tmdb_id); }
     }
     for m in &snap.movies {
-        let existed = crate::queries::movie_exists(&tx, m.tmdb_id)?;
+        let existed = crate::queries::movie_exists(tx, m.tmdb_id)?;
         tx.execute(
             "INSERT INTO movies(tmdb_id,tvdb_id,imdb_id,tvtime_uuid,title,year,release_date,
                                 runtime,poster_path,backdrop_path,overview,my_state,watched_at,
@@ -169,15 +171,32 @@ pub fn apply_library(conn: &Connection, snap: &Snapshot) -> Result<(usize, usize
                     m.release_date, m.runtime, m.poster_path, m.backdrop_path, m.overview,
                     m.my_state, m.watched_at, m.rewatch_count, m.is_favorite, m.added_at,
                     m.is_anime])?;
-        if !existed { new_movies += 1; }
+        if !existed { merged.movies.push(m.tmdb_id); }
     }
-    if crate::queries::setting(&tx, "tmdb_key")?.is_none() {
+    if crate::queries::setting(tx, "tmdb_key")?.is_none() {
         if let Some(k) = &snap.tmdb_key {
-            crate::queries::set_setting(&tx, "tmdb_key", k)?;
+            crate::queries::set_setting(tx, "tmdb_key", k)?;
         }
     }
+    Ok(merged)
+}
+
+/// Pairing merge: no ops, since the snapshot came from the peer itself.
+pub fn apply_library(conn: &Connection, snap: &Snapshot) -> Result<(usize, usize)> {
+    let tx = conn.unchecked_transaction()?;
+    let m = merge_library(&tx, snap)?;
     tx.commit()?;
-    Ok((new_shows, new_movies))
+    Ok((m.shows.len(), m.movies.len()))
+}
+
+/// Backup restore: the merge plus ops for everything it inserted, so a paired
+/// phone receives the restored items.
+pub fn restore_backup(conn: &Connection, snap: &Snapshot, now: &str) -> Result<(usize, usize)> {
+    let tx = conn.unchecked_transaction()?;
+    let m = merge_library(&tx, snap)?;
+    oplog::log_restored(&tx, &m.shows, &m.watches, &m.movies, now)?;
+    tx.commit()?;
+    Ok((m.shows.len(), m.movies.len()))
 }
 
 /// Sync bootstrap: the library merge plus the peer cursor.
@@ -251,5 +270,57 @@ mod tests {
         let st: String = b.query_row("SELECT my_state FROM shows WHERE tmdb_id=1", [], |r| r.get(0)).unwrap();
         assert_eq!(st, "stopped"); // phone-local state survives
         assert_eq!(crate::queries::setting(&b, "tmdb_key").unwrap().unwrap(), "mine");
+    }
+
+    const NOW: &str = "2026-10-26T12:00:00Z";
+
+    #[test]
+    fn backup_restore_logs_what_it_adds_so_the_phone_gets_it() {
+        let a = crate::db::open_memory().unwrap();
+        a.execute_batch(
+            "INSERT INTO shows(tmdb_id,name,my_state,added_at) VALUES(1,'A','watching','2026-06-01T00:00:00Z');
+             INSERT INTO shows(tmdb_id,name,my_state,is_favorite,added_at) VALUES(2,'B','plan_to_watch',1,'2026-06-01T00:00:00Z');
+             INSERT INTO episodes(tmdb_id,show_tmdb_id,season_number,episode_number) VALUES(10,1,1,1),(11,1,1,2);
+             INSERT INTO episode_watches(episode_tmdb_id,watched_at,source) VALUES
+               (10,'2026-06-02T00:00:00Z','app'),(11,'2026-06-03T00:00:00Z','app');
+             INSERT INTO movies(tmdb_id,title,my_state,watched_at,rewatch_count,added_at)
+               VALUES(50,'M','watched','2026-06-04T00:00:00Z',2,'2026-06-01T00:00:00Z');").unwrap();
+        let snap = super::build_snapshot(&a).unwrap();
+        // the restoring desktop already has show 1 with ep 10 watched
+        let b = crate::db::open_memory().unwrap();
+        b.execute_batch(
+            "INSERT INTO shows(tmdb_id,name,my_state,added_at) VALUES(1,'A','stopped','2026-05-01T00:00:00Z');
+             INSERT INTO episodes(tmdb_id,show_tmdb_id,season_number,episode_number) VALUES(10,1,1,1);
+             INSERT INTO episode_watches(episode_tmdb_id,watched_at,source) VALUES(10,NULL,'app');").unwrap();
+        assert_eq!(super::restore_backup(&b, &snap, NOW).unwrap(), (1, 1));
+
+        let ops = crate::oplog::ops_since(&b, 0).unwrap();
+        let got: Vec<(&str, i64, &str)> =
+            ops.iter().map(|o| (o.entity.as_str(), o.entity_id, o.op.as_str())).collect();
+        assert_eq!(got, [("show", 2, "add"), ("show", 2, "favorite"), ("ep", 11, "watch"),
+                         ("movie", 50, "add"), ("movie", 50, "rewatch")]);
+        assert!(ops.iter().all(|o| o.ts == NOW));
+        assert_eq!(ops[0].payload.as_ref().unwrap()["state"], "plan_to_watch");
+        assert_eq!(ops[2].payload.as_ref().unwrap()["watched_at"], "2026-06-03T00:00:00Z");
+        assert_eq!(ops[2].payload.as_ref().unwrap()["show"], 1);
+        assert_eq!(ops[4].payload.as_ref().unwrap()["count"], 2);
+        // still no sync relationship, and a second restore adds and logs nothing
+        assert_eq!(crate::oplog::sync_get(&b, "peer_cursor").unwrap(), None);
+        assert_eq!(super::restore_backup(&b, &snap, NOW).unwrap(), (0, 0));
+        assert_eq!(crate::oplog::ops_since(&b, 0).unwrap().len(), 5);
+    }
+
+    #[test]
+    fn restoring_an_older_backup_keeps_the_anime_flag() {
+        let a = crate::db::open_memory().unwrap();
+        a.execute_batch("INSERT INTO shows(tmdb_id,name,my_state,is_anime,added_at)
+                         VALUES(1,'A','watching',0,'2026-06-01T00:00:00Z')").unwrap();
+        let snap = super::build_snapshot(&a).unwrap();
+        let b = crate::db::open_memory().unwrap();
+        b.execute_batch("INSERT INTO shows(tmdb_id,name,my_state,is_anime,added_at)
+                         VALUES(1,'A','watching',1,'2026-06-01T00:00:00Z')").unwrap();
+        super::restore_backup(&b, &snap, NOW).unwrap();
+        let anime: i64 = b.query_row("SELECT is_anime FROM shows WHERE tmdb_id=1", [], |r| r.get(0)).unwrap();
+        assert_eq!(anime, 1);
     }
 }

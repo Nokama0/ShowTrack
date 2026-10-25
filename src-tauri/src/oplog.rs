@@ -298,6 +298,40 @@ pub fn log_movie_add(conn: &Connection, id: i64, state: &str,
            Some(json!({"state": state, "watched_at": watched_at, "src": src, "anime": anime})), now)
 }
 
+/// Backup restore writes rows directly; log what it inserted the way
+/// seed_from_library does, stamped with the restore time.
+pub fn log_restored(conn: &Connection, shows: &[i64], watches: &[i64], movies: &[i64],
+                    now: &str) -> Result<()> {
+    for &id in shows {
+        let (state, fav, anime): (String, i64, i64) = conn.query_row(
+            "SELECT my_state, is_favorite, is_anime FROM shows WHERE tmdb_id=?1", [id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+        log_show_add(conn, id, &state, if id < 0 { "movie" } else { "tv" }, anime != 0, now)?;
+        if fav != 0 {
+            append(conn, "show", id, "favorite", Some(json!({"value": true})), now)?;
+        }
+    }
+    for &ep in watches {
+        let at: Option<String> = conn.query_row(
+            "SELECT watched_at FROM episode_watches WHERE episode_tmdb_id=?1", [ep], |r| r.get(0))?;
+        let show = show_of_episode(conn, ep)?;
+        append(conn, "ep", ep, "watch", Some(json!({"watched_at": at, "show": show})), now)?;
+    }
+    for &id in movies {
+        let (state, at, rew, fav, anime): (String, Option<String>, i64, i64, i64) = conn.query_row(
+            "SELECT my_state, watched_at, rewatch_count, is_favorite, is_anime FROM movies WHERE tmdb_id=?1",
+            [id], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)))?;
+        log_movie_add(conn, id, &state, at.as_deref(), if id < 0 { "tv" } else { "movie" }, anime != 0, now)?;
+        if fav != 0 {
+            append(conn, "movie", id, "favorite", Some(json!({"value": true})), now)?;
+        }
+        if rew > 0 {
+            append(conn, "movie", id, "rewatch", Some(json!({"count": rew})), now)?;
+        }
+    }
+    Ok(())
+}
+
 /// Import watches have NULL watched_at by design; the op ts is the import time.
 fn log_import_watches(conn: &Connection, ids: &[i64], now: &str) -> Result<()> {
     for id in ids {

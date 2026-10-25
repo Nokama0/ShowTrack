@@ -608,7 +608,7 @@ pub async fn backup_import(state: State<'_, AppState>, path: String) -> CmdResul
     let bytes = tokio::fs::read(&path).await.map_err(|e| e.to_string())?;
     let snap: crate::sync_proto::Snapshot = serde_json::from_slice(&bytes)
         .map_err(|_| "that file is not a ShowTrack backup".to_string())?;
-    let (shows, movies) = with_db(&state.db, move |c| crate::sync_proto::apply_library(c, &snap))
+    let (shows, movies) = with_db(&state.db, move |c| crate::sync_proto::restore_backup(c, &snap, &now_rfc3339()))
         .await
         .map_err(|e| e.to_string())?;
     Ok(PairSummary { shows, movies })
