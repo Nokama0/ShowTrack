@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { api } from "$lib/api";
-  import { session } from "$lib/session.svelte";
-  import { airingLabel, fmtDate, fmtRuntime } from "$lib/format";
-  import type { BingeCard } from "$lib/types";
-  import PosterImg from "$lib/ui/PosterImg.svelte";
-  import Ring from "$lib/ui/Ring.svelte";
-  import TileSlider from "$lib/ui/TileSlider.svelte";
+  import { api } from "#lib/api.js";
+  import { session } from "#lib/session.svelte.js";
+  import { airingLabel, fmtDate, fmtRuntime } from "#lib/format.js";
+  import type { BingeCard } from "#lib/types.js";
+  import PosterImg from "#lib/ui/PosterImg.svelte";
+  import Ring from "#lib/ui/Ring.svelte";
+  import TileSlider from "#lib/ui/TileSlider.svelte";
 
   let { animeOnly = false }: { animeOnly?: boolean } = $props();
 

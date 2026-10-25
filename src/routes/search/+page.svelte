@@ -1,14 +1,14 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { api } from "$lib/api";
-  import { session } from "$lib/session.svelte";
-  import { askDialog, type DialogButton } from "$lib/dialog.svelte";
-  import type { SearchItem } from "$lib/types";
-  import PosterImg from "$lib/ui/PosterImg.svelte";
-  import TitlePreview from "$lib/ui/TitlePreview.svelte";
+  import { api } from "#lib/api.js";
+  import { session } from "#lib/session.svelte.js";
+  import { askDialog, type DialogButton } from "#lib/dialog.svelte.js";
+  import type { SearchItem } from "#lib/types.js";
+  import PosterImg from "#lib/ui/PosterImg.svelte";
+  import TitlePreview from "#lib/ui/TitlePreview.svelte";
 
   $effect(() => {
-    if (!session.features.searchPage) goto("/", { replaceState: true });
+    if (!session.features.searchPage) goto("/", { replace: true });
   });
 
   // svelte-ignore state_referenced_locally -- the preserved search seeds the initial value only

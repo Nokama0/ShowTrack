@@ -1,7 +1,2 @@
 allowBuilds:
   esbuild: true
-# force the transitive cookie past the <0.7.0 advisory (GHSA out-of-bounds chars),
-# but stay on 0.7.x: cookie 2.x drops the `serialize` named export SvelteKit imports,
-# which Rolldown (Vite 8) rejects. The app is adapter-static so cookie is unused at runtime.
-overrides:
-  cookie: "^0.7.0"

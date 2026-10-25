@@ -1,10 +1,10 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { appConfirm } from "$lib/dialog.svelte";
-  import { api } from "$lib/api";
-  import { session } from "$lib/session.svelte";
-  import type { MovieRow } from "$lib/types";
+  import { appConfirm } from "#lib/dialog.svelte.js";
+  import { api } from "#lib/api.js";
+  import { session } from "#lib/session.svelte.js";
+  import type { MovieRow } from "#lib/types.js";
   import PosterImg from "./PosterImg.svelte";
 
   let { movie, onreplace, onremove, onclose }: {

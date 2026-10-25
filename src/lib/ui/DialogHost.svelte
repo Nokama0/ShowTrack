@@ -1,7 +1,7 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
   import { cubicOut } from "svelte/easing";
-  import { dialog, settleDialog } from "$lib/dialog.svelte";
+  import { dialog, settleDialog } from "#lib/dialog.svelte.js";
 
   function onKey(e: KeyboardEvent) {
     if (dialog.current && e.key === "Escape") {

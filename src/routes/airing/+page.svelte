@@ -1,17 +1,17 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { api } from "$lib/api";
-  import { session } from "$lib/session.svelte";
-  import { airingLabel, fmtDate, fmtMonth } from "$lib/format";
-  import type { AiringRow } from "$lib/types";
-  import PosterImg from "$lib/ui/PosterImg.svelte";
+  import { api } from "#lib/api.js";
+  import { session } from "#lib/session.svelte.js";
+  import { airingLabel, fmtDate, fmtMonth } from "#lib/format.js";
+  import type { AiringRow } from "#lib/types.js";
+  import PosterImg from "#lib/ui/PosterImg.svelte";
 
   let rows = $state<AiringRow[]>([]);
   let loaded = $state(false);
   let loadError = $state("");
 
   $effect(() => {
-    if (!session.features.airingPage) goto("/", { replaceState: true });
+    if (!session.features.airingPage) goto("/", { replace: true });
   });
 
   $effect(() => {

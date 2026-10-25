@@ -4,14 +4,14 @@
   import "../app.css";
   import { onMount } from "svelte";
   import { page } from "$app/state";
-  import { loadSession, session } from "$lib/session.svelte";
-  import { api } from "$lib/api";
+  import { loadSession, session } from "#lib/session.svelte.js";
+  import { api } from "#lib/api.js";
   import { getCurrentWebview } from "@tauri-apps/api/webview";
-  import { isAndroid } from "$lib/platform";
-  import Onboarding from "$lib/ui/Onboarding.svelte";
-  import NavIcon from "$lib/ui/NavIcon.svelte";
-  import DialogHost from "$lib/ui/DialogHost.svelte";
-  import WhatsNew from "$lib/ui/WhatsNew.svelte";
+  import { isAndroid } from "#lib/platform.js";
+  import Onboarding from "#lib/ui/Onboarding.svelte";
+  import NavIcon from "#lib/ui/NavIcon.svelte";
+  import DialogHost from "#lib/ui/DialogHost.svelte";
+  import WhatsNew from "#lib/ui/WhatsNew.svelte";
 
   let { children } = $props();
 
