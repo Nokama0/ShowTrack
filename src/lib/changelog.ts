@@ -7,6 +7,15 @@ export interface ChangeEntry {
 // user-facing highlights shown in the "What's new" card after an update.
 export const CHANGELOG: ChangeEntry[] = [
   {
+    version: "0.3.1",
+    notes: [
+      "Marking an episode of a Plan to watch show now moves it to Watching, and shows left stuck in Plan to watch are moved for you.",
+      "Shows, movies and watches restored from a backup now reach your paired phone, and restoring an older backup keeps your anime filing.",
+      "Phone sync: a pairing code is cancelled after 5 wrong tries, and Settings explains when sync could not start because its port is taken.",
+      "On Android, the first-run screen now points you to syncing with your desktop.",
+    ],
+  },
+  {
     version: "0.3.0",
     notes: [
       "A what's-new pop-up now appears after each update, summarizing what changed.",
